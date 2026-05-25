@@ -162,6 +162,7 @@ artifacts/
 tmp/
 .specstory/
 plans
+contracts/benchmarks/
 CTX.md
 
 backend/.venv/

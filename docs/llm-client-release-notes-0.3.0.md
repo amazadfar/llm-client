@@ -50,10 +50,7 @@ controls, and updated model coverage.
   [docs/llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md).
 - Updated the examples guide in
   [docs/llm-client-examples-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-examples-guide.md).
-- Updated the OpenAI capability audits in
-  [docs/openai-provider-capability-audit.md](/home/namiral/Projects/Packages/llm-client-v1/docs/openai-provider-capability-audit.md)
-  and
-  [docs/openai-docs-ledger-completeness-audit-2026-03-31.md](/home/namiral/Projects/Packages/llm-client-v1/docs/openai-docs-ledger-completeness-audit-2026-03-31.md).
+- Updated OpenAI capability documentation and model coverage notes.
 
 ## Validation
 

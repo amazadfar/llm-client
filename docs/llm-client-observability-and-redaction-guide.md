@@ -8,10 +8,9 @@ Runnable examples:
 - [11_observability_and_redaction.py](/home/namiral/Projects/Packages/llm-client-v1/examples/11_observability_and_redaction.py)
 - [12_benchmarks.py](/home/namiral/Projects/Packages/llm-client-v1/examples/12_benchmarks.py)
 
-Security background:
+Security policy:
 
-- [llm-client-threat-model.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-threat-model.md)
-- [llm-client-secure-deployment-defaults.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-secure-deployment-defaults.md)
+- [SECURITY.md](/home/namiral/Projects/Packages/llm-client-v1/SECURITY.md)
 
 ## Observability layers
 

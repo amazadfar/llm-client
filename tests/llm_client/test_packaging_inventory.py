@@ -12,11 +12,9 @@ PY_TYPED = ROOT / "llm_client" / "py.typed"
 
 EXPECTED_DOCS = [
     "llm-client-installation-matrix.md",
-    "llm-client-packaging-readiness.md",
     "llm-client-changelog-process.md",
     "llm-client-semver-policy.md",
     "llm-client-support-policy.md",
-    "llm-client-release-automation.md",
 ]
 
 EXPECTED_SCRIPTS = [
@@ -82,22 +80,15 @@ def test_readme_and_guide_index_reference_packaging_docs() -> None:
     readme = README.read_text(encoding="utf-8")
     guide_index = GUIDE_INDEX.read_text(encoding="utf-8")
     assert "docs/llm-client-installation-matrix.md" in readme
-    assert "docs/llm-client-release-automation.md" in readme
+    assert "docs/llm-client-semver-policy.md" in readme
+    assert "docs/llm-client-support-policy.md" in readme
     assert "llm-client-installation-matrix.md" in guide_index
     assert "llm-client-semver-policy.md" in guide_index
-
-
-def test_release_automation_doc_references_local_validation_steps() -> None:
-    release_automation = (ROOT / "docs" / "llm-client-release-automation.md").read_text(
-        encoding="utf-8"
-    )
-    assert "run_llm_client_examples.py" not in release_automation
-    assert "GitHub-hosted CI" in release_automation
-    assert "twine check" in release_automation
-    assert "Build wheel and sdist locally" in release_automation
 
 
 def test_packaging_inventory_does_not_depend_on_archived_transition_docs() -> None:
     guide_index = GUIDE_INDEX.read_text(encoding="utf-8")
     assert "llm-client-modernization-roadmap-2026-03-09.md" not in guide_index
     assert "llm-client-final-stage-release-checklist-2026-03-24.md" not in guide_index
+    assert "llm-client-packaging-readiness.md" not in guide_index
+    assert "llm-client-release-automation.md" not in guide_index
