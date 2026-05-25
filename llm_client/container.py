@@ -189,7 +189,7 @@ def create_openai_provider(
 
 def create_anthropic_provider(
     api_key: str | None = None,
-    model: str = "claude-sonnet-4",
+    model: str = "claude-opus-4-7",
     **kwargs: Any,
 ) -> Any:
     """
@@ -454,7 +454,7 @@ class Container:
 
             self._anthropic_provider = create_anthropic_provider(
                 api_key=kwargs.get("api_key") or (config.api_key if config else None),
-                model=kwargs.get("model") or (config.default_model if config else "claude-sonnet-4"),
+                model=kwargs.get("model") or (config.default_model if config else "claude-opus-4-7"),
                 **{k: v for k, v in kwargs.items() if k not in ("api_key", "model")},
             )
         return self._anthropic_provider

@@ -20,13 +20,13 @@ load_env()
 
 CHAT_MODEL_DEFAULTS = {
     "openai": "gpt-5-nano",
-    "anthropic": "claude-sonnet-4",
+    "anthropic": "claude-sonnet-4-6",
     "google": "gemini-2.0-flash",
 }
 
 SECONDARY_CHAT_MODEL_DEFAULTS = {
     "openai": "gpt-5-mini",
-    "anthropic": "claude-opus-4",
+    "anthropic": "claude-opus-4-7",
     "google": "gemini-2.5-flash",
 }
 

@@ -43,6 +43,55 @@ def _get_encoder(name: str) -> Any:
         return _FallbackEncoding(name)
 
 
+_MILLION = Decimal("1000000")
+
+
+def _per_mtok(value: str) -> Decimal:
+    return Decimal(value) / _MILLION
+
+
+def _anthropic_usage_costs(input_per_mtok: str, output_per_mtok: str, *, fast_mode: bool = False) -> dict[str, Decimal]:
+    input_cost = _per_mtok(input_per_mtok)
+    output_cost = _per_mtok(output_per_mtok)
+    costs = {
+        "input": input_cost,
+        "output": output_cost,
+        "cached_input": input_cost * Decimal("0.1"),
+        "cache_read_input": input_cost * Decimal("0.1"),
+        "cache_write_5m_input": input_cost * Decimal("1.25"),
+        "cache_write_1h_input": input_cost * Decimal("2"),
+        "batch_input": input_cost * Decimal("0.5"),
+        "batch_output": output_cost * Decimal("0.5"),
+    }
+    if fast_mode:
+        costs["fast_mode_input"] = input_cost * Decimal("6")
+        costs["fast_mode_output"] = output_cost * Decimal("6")
+    return costs
+
+
+def _anthropic_pricing_features(*, data_residency: bool = False, fast_mode: bool = False) -> dict[str, Any]:
+    features: dict[str, Any] = {
+        "prompt_caching": {
+            "cache_write_5m_multiplier": 1.25,
+            "cache_write_1h_multiplier": 2.0,
+            "cache_read_multiplier": 0.1,
+        },
+        "batch": {"input_output_discount_multiplier": 0.5},
+    }
+    if data_residency:
+        features["data_residency"] = {
+            "inference_geo_us_multiplier": 1.1,
+            "applies_to": ["input", "output", "cache_write_5m_input", "cache_write_1h_input", "cache_read_input"],
+        }
+    if fast_mode:
+        features["fast_mode"] = {
+            "input_output_multiplier": 6.0,
+            "available_on": ["messages"],
+            "batch_api_support": False,
+        }
+    return features
+
+
 class ModelProfile:
     supported_models = {
         "completions": [
@@ -129,6 +178,7 @@ class ModelProfile:
     context_window: ClassVar[int]
     rate_limits: ClassVar[dict]
     usage_costs: ClassVar[dict]
+    pricing_features: ClassVar[dict[str, Any]] = {}
     reasoning_model: ClassVar[bool] = False
     reasoning_efforts: ClassVar[list[str]] = []
     default_reasoning_effort: ClassVar[str | None] = None
@@ -178,6 +228,15 @@ class ModelProfile:
         return Decimal(n_tokens) * cls.usage_costs["cached_input"]
 
     @classmethod
+    def cache_read_input_cost(cls, n_tokens: int) -> Decimal:
+        return Decimal(n_tokens) * cls.usage_costs.get("cache_read_input", cls.usage_costs["cached_input"])
+
+    @classmethod
+    def cache_creation_input_cost(cls, n_tokens: int, *, ttl: str = "5m") -> Decimal:
+        key = "cache_write_1h_input" if ttl == "1h" else "cache_write_5m_input"
+        return Decimal(n_tokens) * cls.usage_costs.get(key, cls.usage_costs["input"])
+
+    @classmethod
     def tokenize(cls, text: str) -> list[int]:
         return _get_encoder(cls.encoding).encode(text)
 
@@ -223,11 +282,9 @@ class ModelProfile:
     @classmethod
     def parse_usage(cls, usage: dict[str, Any]) -> dict[str, int | Decimal]:
         input_tokens = int(usage.get("prompt_tokens", usage.get("input_tokens", 0)) or 0)
-        total_tokens = int(usage.get("total_tokens", 0) or 0)
 
         parsed_usage: dict[str, int | Decimal] = {
             "input_tokens": input_tokens,
-            "total_tokens": total_tokens,
         }
 
         output_tokens: int | None = None
@@ -245,6 +302,14 @@ class ModelProfile:
         if isinstance(token_details, dict):
             cached_tokens = int(token_details.get("cached_tokens", 0) or 0)
 
+        cache_read_tokens = int(usage.get("cache_read_input_tokens", 0) or 0)
+        cache_creation_5m_tokens = int(usage.get("cache_creation_5m_input_tokens", 0) or 0)
+        cache_creation_1h_tokens = int(usage.get("cache_creation_1h_input_tokens", 0) or 0)
+        generic_cache_creation_tokens = int(usage.get("cache_creation_input_tokens", 0) or 0)
+        if generic_cache_creation_tokens > 0 and cache_creation_5m_tokens == 0 and cache_creation_1h_tokens == 0:
+            cache_creation_5m_tokens = generic_cache_creation_tokens
+        cache_creation_tokens = cache_creation_5m_tokens + cache_creation_1h_tokens
+
         output_tokens_reasoning = 0
         output_tokens_details = usage.get("output_tokens_details")
         if isinstance(output_tokens_details, dict):
@@ -252,13 +317,28 @@ class ModelProfile:
             if output_tokens_reasoning > 0:
                 parsed_usage["output_tokens_reasoning"] = output_tokens_reasoning
 
-        if cached_tokens > 0:
+        if cache_read_tokens > 0:
+            cache_read_cost = cls.cache_read_input_cost(cache_read_tokens)
+            input_cost = cls.input_cost(input_tokens) + cache_read_cost
+            parsed_usage["input_tokens_cached"] = cache_read_tokens
+            parsed_usage["cache_read_input_tokens"] = cache_read_tokens
+            parsed_usage["cache_read_input_cost"] = cache_read_cost
+        elif cached_tokens > 0:
             input_cost_cached = cls.cached_input_cost(cached_tokens)
             input_cost_uncached = cls.input_cost(input_tokens - cached_tokens)
             input_cost = input_cost_cached + input_cost_uncached
             parsed_usage["input_tokens_cached"] = cached_tokens
+            parsed_usage["cache_read_input_tokens"] = cached_tokens
+            parsed_usage["cache_read_input_cost"] = input_cost_cached
         else:
             input_cost = cls.input_cost(input_tokens)
+
+        if cache_creation_tokens > 0:
+            cache_creation_cost = cls.cache_creation_input_cost(cache_creation_5m_tokens, ttl="5m")
+            cache_creation_cost += cls.cache_creation_input_cost(cache_creation_1h_tokens, ttl="1h")
+            input_cost += cache_creation_cost
+            parsed_usage["cache_creation_input_tokens"] = cache_creation_tokens
+            parsed_usage["cache_creation_input_cost"] = cache_creation_cost
 
         parsed_usage["input_cost"] = input_cost
 
@@ -267,6 +347,10 @@ class ModelProfile:
             output_cost = cls.output_cost(output_tokens)
             parsed_usage["output_cost"] = output_cost
 
+        total_tokens = int(usage.get("total_tokens", 0) or 0)
+        if total_tokens <= 0:
+            total_tokens = input_tokens + (output_tokens or 0) + cache_read_tokens + cache_creation_tokens
+        parsed_usage["total_tokens"] = total_tokens
         parsed_usage["total_cost"] = input_cost + (output_cost or Decimal("0"))
 
         return parsed_usage
@@ -1399,155 +1483,288 @@ class Gemini15Pro(ModelProfile):
     encoding = "cl100k_base"
 
 
-class Claude35Sonnet(ModelProfile):
-    key = "claude-3-5-sonnet"
-    model_name = "claude-3-5-sonnet-20241022"
-    category = "completions"
-    context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("3.00") / Decimal("1000000"),
-        "output": Decimal("15.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.30") / Decimal("1000000"),
-    }
-    rate_limits = {"tkn_per_min": 80_000, "req_per_min": 4_000}
-    function_calling_support = True
-    token_streaming_support = True
-    encoding = "cl100k_base"  # Approximation
+class ClaudeOpus47(ModelProfile):
+    """Claude Opus 4.7 - most capable current Anthropic model."""
 
-
-class Claude35Haiku(ModelProfile):
-    key = "claude-3-5-haiku"
-    model_name = "claude-3-5-haiku-20241022"
+    key = "claude-opus-4-7"
+    model_name = "claude-opus-4-7"
     category = "completions"
-    context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("1.00") / Decimal("1000000"),
-        "output": Decimal("5.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.10") / Decimal("1000000"),
-    }
-    rate_limits = {"tkn_per_min": 100_000, "req_per_min": 5_000}
+    context_window = 1_000_000
+    max_output = 128_000
+    usage_costs = _anthropic_usage_costs("5.00", "25.00", fast_mode=True)
+    pricing_features = _anthropic_pricing_features(data_residency=True, fast_mode=True)
+    rate_limits = {"tkn_per_min": 120_000, "req_per_min": 6_000}
+    reasoning_model = True
     function_calling_support = True
     token_streaming_support = True
     encoding = "cl100k_base"
 
 
-class Claude3Opus(ModelProfile):
-    key = "claude-3-opus"
-    model_name = "claude-3-opus-20240229"
+class ClaudeSonnet46(ModelProfile):
+    """Claude Sonnet 4.6 - current balanced Anthropic model."""
+
+    key = "claude-sonnet-4-6"
+    model_name = "claude-sonnet-4-6"
+    category = "completions"
+    context_window = 1_000_000
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("3.00", "15.00")
+    pricing_features = _anthropic_pricing_features(data_residency=True)
+    rate_limits = {"tkn_per_min": 120_000, "req_per_min": 6_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+
+
+class ClaudeHaiku45(ModelProfile):
+    """Claude Haiku 4.5 - fastest current Anthropic model."""
+
+    key = "claude-haiku-4-5"
+    model_name = "claude-haiku-4-5-20251001"
     category = "completions"
     context_window = 200_000
-    max_output = 4_096
-    usage_costs = {
-        "input": Decimal("15.00") / Decimal("1000000"),
-        "output": Decimal("75.00") / Decimal("1000000"),
-    }
-    rate_limits = {"tkn_per_min": 40_000, "req_per_min": 2_000}
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("1.00", "5.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 120_000, "req_per_min": 6_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+
+
+class Claude45Haiku(ClaudeHaiku45):
+    """Compatibility alias for Claude Haiku 4.5."""
+
+    key = "claude-4-5-haiku"
+
+
+class ClaudeOpus46(ModelProfile):
+    """Claude Opus 4.6 legacy model."""
+
+    key = "claude-opus-4-6"
+    model_name = "claude-opus-4-6"
+    category = "completions"
+    context_window = 1_000_000
+    max_output = 128_000
+    usage_costs = _anthropic_usage_costs("5.00", "25.00", fast_mode=True)
+    pricing_features = _anthropic_pricing_features(data_residency=True, fast_mode=True)
+    rate_limits = {"tkn_per_min": 120_000, "req_per_min": 6_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+
+
+class ClaudeSonnet45(ModelProfile):
+    """Claude Sonnet 4.5 legacy model."""
+
+    key = "claude-sonnet-4-5"
+    model_name = "claude-sonnet-4-5-20250929"
+    category = "completions"
+    context_window = 200_000
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("3.00", "15.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 100_000, "req_per_min": 5_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+
+
+class Claude45Sonnet(ClaudeSonnet45):
+    """Compatibility alias for Claude Sonnet 4.5."""
+
+    key = "claude-4-5-sonnet"
+
+
+class ClaudeOpus45(ModelProfile):
+    """Claude Opus 4.5 legacy model."""
+
+    key = "claude-opus-4-5"
+    model_name = "claude-opus-4-5-20251101"
+    category = "completions"
+    context_window = 200_000
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("5.00", "25.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 80_000, "req_per_min": 4_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+
+
+class Claude45Opus(ClaudeOpus45):
+    """Compatibility alias for Claude Opus 4.5."""
+
+    key = "claude-4-5-opus"
+
+
+class ClaudeOpus41(ModelProfile):
+    """Claude Opus 4.1 legacy model."""
+
+    key = "claude-opus-4-1"
+    model_name = "claude-opus-4-1-20250805"
+    category = "completions"
+    context_window = 200_000
+    max_output = 32_000
+    usage_costs = _anthropic_usage_costs("15.00", "75.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 60_000, "req_per_min": 3_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
     function_calling_support = True
     token_streaming_support = True
     encoding = "cl100k_base"
 
 
 class ClaudeSonnet4(ModelProfile):
-    """Claude Sonnet 4 - current Anthropic Sonnet family entry."""
+    """Deprecated Claude Sonnet 4 snapshot."""
 
     key = "claude-sonnet-4"
     model_name = "claude-sonnet-4-20250514"
     category = "completions"
     context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("3.00") / Decimal("1000000"),
-        "output": Decimal("15.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.30") / Decimal("1000000"),
-    }
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("3.00", "15.00")
+    pricing_features = _anthropic_pricing_features()
     rate_limits = {"tkn_per_min": 100_000, "req_per_min": 5_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
     function_calling_support = True
     token_streaming_support = True
     encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-sonnet-4-6"
 
 
 class ClaudeOpus4(ModelProfile):
-    """Claude Opus 4 - current Anthropic Opus family entry."""
+    """Deprecated Claude Opus 4 snapshot."""
 
     key = "claude-opus-4"
     model_name = "claude-opus-4-20250514"
     category = "completions"
     context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("5.00") / Decimal("1000000"),
-        "output": Decimal("25.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.50") / Decimal("1000000"),
-    }
+    max_output = 32_000
+    usage_costs = _anthropic_usage_costs("15.00", "75.00")
+    pricing_features = _anthropic_pricing_features()
     rate_limits = {"tkn_per_min": 60_000, "req_per_min": 3_000}
-    function_calling_support = True
-    token_streaming_support = True
     reasoning_model = True
     reasoning_efforts = ["low", "medium", "high"]
     default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
     encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-opus-4-7"
 
 
-class Claude45Haiku(ModelProfile):
-    """Compatibility alias for the latest supported Haiku-class Anthropic model."""
+class Claude37Sonnet(ModelProfile):
+    """Retired Claude Sonnet 3.7 compatibility profile."""
 
-    key = "claude-4-5-haiku"
+    key = "claude-3-7-sonnet"
+    model_name = "claude-3-7-sonnet-20250219"
+    category = "completions"
+    context_window = 200_000
+    max_output = 64_000
+    usage_costs = _anthropic_usage_costs("3.00", "15.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 80_000, "req_per_min": 4_000}
+    reasoning_model = True
+    reasoning_efforts = ["low", "medium", "high"]
+    default_reasoning_effort = "medium"
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-sonnet-4-6"
+
+
+class Claude35Sonnet(ModelProfile):
+    """Retired Claude Sonnet 3.5 compatibility profile."""
+
+    key = "claude-3-5-sonnet"
+    model_name = "claude-3-5-sonnet-20241022"
+    category = "completions"
+    context_window = 200_000
+    max_output = 8_192
+    usage_costs = _anthropic_usage_costs("3.00", "15.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 80_000, "req_per_min": 4_000}
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-sonnet-4-6"
+
+
+class Claude35Haiku(ModelProfile):
+    """Retired Claude Haiku 3.5 compatibility profile."""
+
+    key = "claude-3-5-haiku"
     model_name = "claude-3-5-haiku-20241022"
     category = "completions"
     context_window = 200_000
     max_output = 8_192
-    usage_costs = {
-        "input": Decimal("1.00") / Decimal("1000000"),
-        "output": Decimal("5.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.10") / Decimal("1000000"),
-    }
-    rate_limits = {"tkn_per_min": 120_000, "req_per_min": 6_000}
-    function_calling_support = True
-    token_streaming_support = True
-    encoding = "cl100k_base"
-
-
-class Claude45Sonnet(ModelProfile):
-    """Compatibility alias for the current Claude Sonnet 4 model."""
-
-    key = "claude-4-5-sonnet"
-    model_name = "claude-sonnet-4-20250514"
-    category = "completions"
-    context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("3.00") / Decimal("1000000"),
-        "output": Decimal("15.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.30") / Decimal("1000000"),
-    }
+    usage_costs = _anthropic_usage_costs("0.80", "4.00")
+    pricing_features = _anthropic_pricing_features()
     rate_limits = {"tkn_per_min": 100_000, "req_per_min": 5_000}
     function_calling_support = True
     token_streaming_support = True
     encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-haiku-4-5"
 
 
-class Claude45Opus(ModelProfile):
-    """Compatibility alias for the current Claude Opus 4 model."""
+class Claude3Opus(ModelProfile):
+    """Retired Claude Opus 3 compatibility profile."""
 
-    key = "claude-4-5-opus"
-    model_name = "claude-opus-4-20250514"
+    key = "claude-3-opus"
+    model_name = "claude-3-opus-20240229"
     category = "completions"
     context_window = 200_000
-    max_output = 8_192
-    usage_costs = {
-        "input": Decimal("5.00") / Decimal("1000000"),
-        "output": Decimal("25.00") / Decimal("1000000"),
-        "cached_input": Decimal("0.50") / Decimal("1000000"),
-    }
-    rate_limits = {"tkn_per_min": 60_000, "req_per_min": 3_000}
+    max_output = 4_096
+    usage_costs = _anthropic_usage_costs("15.00", "75.00")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 40_000, "req_per_min": 2_000}
     function_calling_support = True
     token_streaming_support = True
-    reasoning_model = True
-    reasoning_efforts = ["low", "medium", "high"]
-    default_reasoning_effort = "medium"
     encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-opus-4-7"
+
+
+class Claude3Haiku(ModelProfile):
+    """Retired Claude Haiku 3 compatibility profile."""
+
+    key = "claude-3-haiku"
+    model_name = "claude-3-haiku-20240307"
+    category = "completions"
+    context_window = 200_000
+    max_output = 4_096
+    usage_costs = _anthropic_usage_costs("0.25", "1.25")
+    pricing_features = _anthropic_pricing_features()
+    rate_limits = {"tkn_per_min": 100_000, "req_per_min": 5_000}
+    function_calling_support = True
+    token_streaming_support = True
+    encoding = "cl100k_base"
+    deprecated = True
+    replacement = "claude-haiku-4-5"
 
 
 class Gemini3Flash(ModelProfile):
@@ -1662,10 +1879,21 @@ __all__ = [
     "Gemini3Flash",
     "Gemini3Pro",
     # Claude
+    "ClaudeOpus47",
+    "ClaudeSonnet46",
+    "ClaudeHaiku45",
+    "Claude45Haiku",
+    "ClaudeOpus46",
+    "ClaudeSonnet45",
+    "Claude45Sonnet",
+    "ClaudeOpus45",
+    "Claude45Opus",
+    "ClaudeOpus41",
+    "ClaudeSonnet4",
+    "ClaudeOpus4",
+    "Claude37Sonnet",
     "Claude35Sonnet",
     "Claude35Haiku",
     "Claude3Opus",
-    "Claude45Haiku",
-    "Claude45Sonnet",
-    "Claude45Opus",
+    "Claude3Haiku",
 ]

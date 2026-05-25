@@ -645,7 +645,7 @@ async def _resolve_secondary(primary: Any, configured_secondary: Any) -> tuple[A
 
     backup_model = {
         "openai": "gpt-5-mini",
-        "anthropic": "claude-sonnet-4",
+        "anthropic": "claude-sonnet-4-6",
         "google": "gemini-2.5-flash",
     }[primary.name]
     backup_handle = build_provider_handle(primary.name, backup_model)

@@ -66,6 +66,67 @@ def test_model_catalog_includes_gpt54_family_metadata() -> None:
     assert gpt54_pro.audio_input is False
 
 
+def test_model_catalog_includes_current_anthropic_models() -> None:
+    catalog = get_default_model_catalog()
+
+    opus = catalog.get("claude-opus-4-7")
+    sonnet = catalog.get("claude-sonnet-4-6")
+    haiku = catalog.get("claude-haiku-4-5")
+
+    assert opus.provider == "anthropic"
+    assert opus.model_name == "claude-opus-4-7"
+    assert opus.context_window == 1_000_000
+    assert opus.max_output == 128_000
+    assert opus.usage_costs["input"] == float(Decimal("5.00") / Decimal("1000000"))
+    assert opus.usage_costs["cache_write_5m_input"] == float(Decimal("6.25") / Decimal("1000000"))
+    assert opus.usage_costs["cache_write_1h_input"] == float(Decimal("10.00") / Decimal("1000000"))
+    assert opus.usage_costs["batch_output"] == float(Decimal("12.50") / Decimal("1000000"))
+    assert opus.usage_costs["fast_mode_output"] == float(Decimal("150.00") / Decimal("1000000"))
+    assert opus.pricing_features["data_residency"]["inference_geo_us_multiplier"] == 1.1
+
+    assert sonnet.model_name == "claude-sonnet-4-6"
+    assert sonnet.context_window == 1_000_000
+    assert sonnet.max_output == 64_000
+    assert sonnet.reasoning is True
+    assert sonnet.default_reasoning_effort == "medium"
+    assert sonnet.usage_costs["batch_input"] == float(Decimal("1.50") / Decimal("1000000"))
+    assert sonnet.usage_costs["cache_write_1h_input"] == float(Decimal("6.00") / Decimal("1000000"))
+
+    assert haiku.model_name == "claude-haiku-4-5-20251001"
+    assert haiku.context_window == 200_000
+    assert haiku.max_output == 64_000
+    assert haiku.usage_costs["input"] == float(Decimal("1.00") / Decimal("1000000"))
+    assert haiku.usage_costs["cache_write_5m_input"] == float(Decimal("1.25") / Decimal("1000000"))
+    assert haiku.usage_costs["batch_output"] == float(Decimal("2.50") / Decimal("1000000"))
+
+
+def test_model_catalog_includes_anthropic_legacy_and_compatibility_aliases() -> None:
+    catalog = get_default_model_catalog()
+
+    assert catalog.get("claude-opus-4-6").model_name == "claude-opus-4-6"
+    assert catalog.get("claude-opus-4-5").model_name == "claude-opus-4-5-20251101"
+    assert catalog.get("claude-opus-4-1").model_name == "claude-opus-4-1-20250805"
+    assert catalog.get("claude-sonnet-4-5").model_name == "claude-sonnet-4-5-20250929"
+
+    assert catalog.get("claude-4-5-haiku").model_name == "claude-haiku-4-5-20251001"
+    assert catalog.get("claude-4-5-sonnet").model_name == "claude-sonnet-4-5-20250929"
+    assert catalog.get("claude-4-5-opus").model_name == "claude-opus-4-5-20251101"
+
+    deprecated_sonnet = catalog.get("claude-sonnet-4")
+    deprecated_opus = catalog.get("claude-opus-4")
+    retired_haiku = catalog.get("claude-3-5-haiku")
+
+    assert deprecated_sonnet.deprecated is True
+    assert deprecated_sonnet.replacement == "claude-sonnet-4-6"
+    assert deprecated_sonnet.max_output == 64_000
+    assert deprecated_opus.deprecated is True
+    assert deprecated_opus.replacement == "claude-opus-4-7"
+    assert deprecated_opus.usage_costs["input"] == float(Decimal("15.00") / Decimal("1000000"))
+    assert retired_haiku.deprecated is True
+    assert retired_haiku.replacement == "claude-haiku-4-5"
+    assert retired_haiku.usage_costs["input"] == float(Decimal("0.80") / Decimal("1000000"))
+
+
 def test_model_catalog_filters_by_provider_category_and_capability() -> None:
     catalog = get_default_model_catalog()
 
@@ -98,7 +159,7 @@ def test_model_catalog_resolves_provider_defaults() -> None:
     assert catalog.default_for_provider("openai").key == "gpt-5"
     assert catalog.default_for_provider("openai", category="embeddings").key == "text-embedding-3-small"
     assert catalog.default_for_provider("google").key == "gemini-2.0-flash"
-    assert catalog.default_for_provider("anthropic").key == "claude-sonnet-4"
+    assert catalog.default_for_provider("anthropic").key == "claude-opus-4-7"
 
 
 def test_model_catalog_override_support_changes_defaults(tmp_path, monkeypatch) -> None:
@@ -190,6 +251,9 @@ def test_model_metadata_helpers_infer_provider_and_serialize() -> None:
     assert infer_provider_for_model("tts-1") == "openai"
     assert infer_provider_for_model("omni-moderation-latest") == "openai"
     assert infer_provider_for_model("gemini-3-pro") == "google"
+    assert infer_provider_for_model("claude-opus-4-7") == "anthropic"
+    assert infer_provider_for_model("claude-sonnet-4-6") == "anthropic"
+    assert infer_provider_for_model("claude-haiku-4-5") == "anthropic"
     assert infer_provider_for_model("claude-4-5-sonnet") == "anthropic"
     assert embedding.to_dict()["provider"] == "openai"
     assert embedding.responses_api is False
@@ -204,7 +268,7 @@ def test_provider_configs_use_catalog_defaults() -> None:
     clear_model_catalog_cache()
     get_default_provider_registry.cache_clear()
     assert OpenAIConfig().default_model == "gpt-5"
-    assert AnthropicConfig().default_model == "claude-sonnet-4"
+    assert AnthropicConfig().default_model == "claude-opus-4-7"
     assert GoogleConfig().default_model == "gemini-2.0-flash"
 
 

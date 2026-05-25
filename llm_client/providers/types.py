@@ -160,11 +160,15 @@ class Usage:
     output_tokens: int = 0
     total_tokens: int = 0
     input_tokens_cached: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
     output_tokens_reasoning: int = 0
 
     # Cost tracking
     input_cost: float = 0.0
     output_cost: float = 0.0
+    cache_read_input_cost: float = 0.0
+    cache_creation_input_cost: float = 0.0
     total_cost: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
@@ -174,9 +178,13 @@ class Usage:
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
             "input_tokens_cached": self.input_tokens_cached,
+            "cache_read_input_tokens": self.cache_read_input_tokens,
+            "cache_creation_input_tokens": self.cache_creation_input_tokens,
             "output_tokens_reasoning": self.output_tokens_reasoning,
             "input_cost": self.input_cost,
             "output_cost": self.output_cost,
+            "cache_read_input_cost": self.cache_read_input_cost,
+            "cache_creation_input_cost": self.cache_creation_input_cost,
             "total_cost": self.total_cost,
         }
 
@@ -188,9 +196,13 @@ class Usage:
             output_tokens=data.get("output_tokens", 0),
             total_tokens=data.get("total_tokens", 0),
             input_tokens_cached=data.get("input_tokens_cached", 0),
+            cache_read_input_tokens=data.get("cache_read_input_tokens", data.get("input_tokens_cached", 0)),
+            cache_creation_input_tokens=data.get("cache_creation_input_tokens", 0),
             output_tokens_reasoning=data.get("output_tokens_reasoning", 0),
             input_cost=data.get("input_cost", 0.0),
             output_cost=data.get("output_cost", 0.0),
+            cache_read_input_cost=data.get("cache_read_input_cost", 0.0),
+            cache_creation_input_cost=data.get("cache_creation_input_cost", 0.0),
             total_cost=data.get("total_cost", 0.0),
         )
 
