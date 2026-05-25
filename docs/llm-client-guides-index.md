@@ -55,16 +55,18 @@ examples under [`examples/`](../examples/README.md).
   [llm-client-support-policy.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-support-policy.md)
 - Release automation:
   [llm-client-release-automation.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-automation.md)
-- 1.2.0 release notes:
-  [llm-client-release-notes-1.2.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-1.2.0.md)
-- 1.1.1 release notes:
-  [llm-client-release-notes-1.1.1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-1.1.1.md)
-- 1.1.0 release notes:
-  [llm-client-release-notes-1.1.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-1.1.0.md)
+- 0.3.1 release notes:
+  [llm-client-release-notes-0.3.1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-0.3.1.md)
+- 0.3.0 release notes:
+  [llm-client-release-notes-0.3.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-0.3.0.md)
+- 0.2.1 release notes:
+  [llm-client-release-notes-0.2.1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-0.2.1.md)
+- 0.2.0 release notes:
+  [llm-client-release-notes-0.2.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-0.2.0.md)
 - 2026-04-01 evaluation report:
   [llm-client-evaluation-report-2026-04-01.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-evaluation-report-2026-04-01.md)
-- 1.0.0 release notes:
-  [llm-client-release-notes-1.0.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-1.0.0.md)
+- 0.1.0 release notes:
+  [llm-client-release-notes-0.1.0.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-release-notes-0.1.0.md)
 
 ## Cookbook Scripts
 

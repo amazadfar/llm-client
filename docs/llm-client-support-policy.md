@@ -20,7 +20,9 @@ Other environments may work, but CI validation focuses on Linux runners.
 
 The stable namespaces defined in
 [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
-are the primary support commitment and the frozen `1.x` package contract.
+are the primary supported integration surface. During the `0.x` line this map
+is still allowed to evolve; a future `1.0.0` release will mark the frozen
+package contract.
 
 ### Compatibility Namespace Support
 

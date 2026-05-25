@@ -221,7 +221,7 @@ Best for:
 
 Current package boundary:
 
-- provider-level and engine request-envelope compatible in `1.1.0`
+- provider-level and engine request-envelope compatible in `0.2.0`
 - richer MCP/connector descriptors are available through `ResponsesMCPTool`
 - `ResponsesConnectorId` provides docs-aligned connector ids for typed connector requests
 - connector-specific enums provide docs-aligned `allowed_tools` values without

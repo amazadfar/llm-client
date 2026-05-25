@@ -1,28 +1,28 @@
-# llm-client 1.0.0 Release Notes
+# llm-client 0.1.0 Release Notes
 
 Release date: 2026-03-26
 
-`llm_client` `1.0.0` is the first stable release of the package as a
+`llm_client` `0.1.0` is the first public package release of the project as a
 standalone, typed, reusable LLM and agentic runtime framework.
 
-This release freezes the `1.x` public package contract defined in:
+This release establishes the initial public package map defined in:
 
 - [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
 
-## What 1.0.0 Means
+## What 0.1.0 Means
 
-`1.0.0` means:
+`0.1.0` means:
 
-- the stable namespace map is no longer a draft
+- the standalone namespace map is usable and documented
 - new integrations should be built against the stable module namespaces
 - compatibility layers remain available for migration, but they are not the
   preferred package surface
-- future `1.x` releases should preserve backward compatibility for the stable
-  package contract
+- future `0.x` releases may still evolve the API before the real `1.0.0`
+  stability promise
 
 ## Stable Namespace Contract
 
-The stable `1.x` surface is:
+The initial public surface is:
 
 - `llm_client.providers`
 - `llm_client.models`
@@ -44,9 +44,9 @@ The stable `1.x` surface is:
 - `llm_client.config`
 
 Compatibility-only or advanced surfaces remain available, but they are outside
-the primary `1.x` promise.
+the preferred package surface.
 
-## What Shipped In The 1.0 Program
+## What Shipped In The Initial Package Program
 
 - provider, engine, agent, tool, cache, context, observability, and structured
   output layers were tightened into a standalone package boundary
@@ -68,7 +68,7 @@ the primary `1.x` promise.
   completed
 - OSS/package hygiene and packaging verification were completed
 
-## Validation Completed For 1.0.0
+## Validation Completed For 0.1.0
 
 - focused package suites passed
 - guide, packaging, and public API inventory suites passed
@@ -76,7 +76,7 @@ the primary `1.x` promise.
 - deterministic benchmark artifacts were generated and compared
 - live provider smoke tests passed for OpenAI and Anthropic
 - wheel and sdist verification passed
-- `twine check` passed for the final `1.0.0` distributions
+- `twine check` passed for the final `0.1.0` distributions
 
 ## Final Adjustments Between RC1 And GA
 
@@ -86,8 +86,9 @@ the primary `1.x` promise.
   by a too-small completion budget
 - a practical build guide was added:
   [llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md)
-- the public API map was promoted from draft to frozen `1.x` contract
-- support and semver docs were updated to reflect the `1.x` freeze explicitly
+- the public API map was promoted into the documented package boundary
+- support and semver docs were updated to describe the package boundary
+  explicitly
 
 ## Documentation Starting Points
 

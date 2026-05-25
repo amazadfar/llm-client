@@ -2,7 +2,10 @@
 
 `llm-client` uses semantic versioning for the standalone package contract.
 
-As of `1.0.0`, the stable namespace map is frozen for the `1.x` line.
+The project is currently in the `0.x` line. The public API map defines the
+intended integration boundary, but it is not yet a `1.0.0` stability promise.
+Minor `0.x` releases may still make documented API adjustments while the
+runtime kernel scope settles.
 
 ## Version Meaning
 
@@ -12,18 +15,19 @@ As of `1.0.0`, the stable namespace map is frozen for the `1.x` line.
 - `PATCH`: backward-compatible fixes, reliability improvements, documentation
   updates, and benchmark/test improvements
 
-## Stable API Scope
+## Public API Scope
 
-The stable API scope is defined in:
+The intended public API scope is defined in:
 
 - [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
 
-Breaking changes are evaluated against that stable API map, not against
+Breaking changes are evaluated against that public API map, not against
 internal helper modules or compatibility surfaces.
 
-For the `1.x` line, new stable surface should be added deliberately and
-sparingly. Compatibility layers may remain, but they should not expand in a
-way that obscures the canonical module map.
+For the `0.x` line, public surface should still be added deliberately and
+sparingly. Compatibility layers may remain, but they should not expand in a way
+that obscures the canonical module map. A future `1.0.0` release will mark the
+point where the public API map becomes a long-term compatibility promise.
 
 ## Deprecation Policy
 

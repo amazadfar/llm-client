@@ -1,8 +1,8 @@
-# llm-client 1.1.0 Release Notes
+# llm-client 0.2.0 Release Notes
 
 Last updated: 2026-04-01
 
-`llm_client` `1.1.0` extends the stable `1.x` package line with a broader
+`llm_client` `0.2.0` extends the pre-`1.0` package line with a broader
 OpenAI Responses API implementation, including background response lifecycle
 support, resumed background streaming, first-class Responses tool descriptors,
 conversation-state lifecycle helpers, response compaction, MCP approval
@@ -203,7 +203,7 @@ Files API helpers, and realtime transcription sessions.
 
 ## Validation
 
-The OpenAI/provider-focused regression slice passed after the `1.1.0` changes:
+The OpenAI/provider-focused regression slice passed after the `0.2.0` changes:
 
 ```bash
 ./.venv/bin/pytest -q \

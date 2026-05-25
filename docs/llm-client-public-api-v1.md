@@ -1,12 +1,13 @@
-# llm-client Public API Map (v1)
+# llm-client Public API Map
 
 This document defines the intended public package boundary for `llm_client`.
 It is the contract to use when modernizing imports, writing examples, and
 deciding whether a symbol should be considered stable, compatibility-only,
 advanced, reserved, or internal.
 
-This is the frozen `1.x` public package map. It defines the semver-protected
-surface for `llm_client` starting with `1.0.0`.
+This is the current public package map for the pre-`1.0.0` line. The file name
+is retained for link stability, but the map is not yet a frozen `1.x`
+compatibility promise.
 
 ## Stability Levels
 
@@ -367,7 +368,8 @@ Intent:
   layer is promoted from repo-specific runtime integrations.
 
 Policy:
-- `1.0.0` does not introduce a stable plugin registry in `llm_client`.
+- The current `0.x` line does not introduce a stable plugin registry in
+  `llm_client`.
 - Plugin lifecycle and host-runtime extension concerns remain external to the
   core package for now.
 - Revisit only after the standalone package API is frozen and real extension

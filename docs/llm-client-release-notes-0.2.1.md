@@ -1,9 +1,9 @@
-# llm-client 1.1.1 Release Notes
+# llm-client 0.2.1 Release Notes
 
 Last updated: 2026-04-02
 
-`llm_client` `1.1.1` is a patch release focused on packaging and metadata
-cleanup after the `1.1.0` OpenAI/provider expansion release.
+`llm_client` `0.2.1` is a patch release focused on packaging and metadata
+cleanup after the `0.2.0` OpenAI/provider expansion release.
 
 ## Fixed
 
