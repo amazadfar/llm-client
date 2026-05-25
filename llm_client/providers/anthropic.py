@@ -84,7 +84,7 @@ class AnthropicProvider(BaseProvider):
 
     Example:
         ```python
-        provider = AnthropicProvider(model="claude-3-5-sonnet")
+        provider = AnthropicProvider(model="claude-sonnet-4-6")
         result = await provider.complete("Hello, world!")
         print(result.content)
         ```
@@ -135,7 +135,7 @@ class AnthropicProvider(BaseProvider):
         Initialize the Anthropic provider.
 
         Args:
-            model: ModelProfile class or model key string (e.g., "claude-3-5-sonnet")
+            model: ModelProfile class or model key string (e.g., "claude-sonnet-4-6")
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
             base_url: Custom API base URL
             max_tokens: Default max tokens for completions (Anthropic requires this)
@@ -372,17 +372,89 @@ class AnthropicProvider(BaseProvider):
         return text_content, tool_calls if tool_calls else None
 
     @staticmethod
-    def _parse_anthropic_usage(usage: Any) -> Usage:
-        """Parse Anthropic usage into our Usage format."""
-        input_tokens = getattr(usage, "input_tokens", 0)
-        output_tokens = getattr(usage, "output_tokens", 0)
-
-        # Anthropic doesn't provide cost info, we'd need to calculate based on model
-        return Usage(
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            total_tokens=input_tokens + output_tokens,
+    def _anthropic_usage_to_dict(usage: Any) -> dict[str, Any]:
+        if usage is None:
+            return {}
+        if isinstance(usage, dict):
+            return dict(usage)
+        if hasattr(usage, "to_dict"):
+            return dict(usage.to_dict())
+        if hasattr(usage, "model_dump"):
+            return dict(usage.model_dump())
+        fields = (
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "cache_creation_5m_input_tokens",
+            "cache_creation_1h_input_tokens",
         )
+        return {field: getattr(usage, field) for field in fields if hasattr(usage, field)}
+
+    def _anthropic_pricing_multiplier(self, params: dict[str, Any]) -> float:
+        features = getattr(self._model, "pricing_features", {}) or {}
+        residency = features.get("data_residency") if isinstance(features, dict) else None
+        if params.get("inference_geo") == "us" and isinstance(residency, dict):
+            return float(residency.get("inference_geo_us_multiplier") or 1.0)
+        return 1.0
+
+    @staticmethod
+    def _cache_creation_ttl_from_params(params: dict[str, Any]) -> str:
+        ttls: set[str] = set()
+
+        def walk(value: Any) -> None:
+            if isinstance(value, dict):
+                cache_control = value.get("cache_control")
+                if isinstance(cache_control, dict):
+                    ttl = cache_control.get("ttl")
+                    if ttl in {"5m", "1h"}:
+                        ttls.add(str(ttl))
+                for nested in value.values():
+                    walk(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    walk(nested)
+
+        walk(params)
+        return "1h" if ttls == {"1h"} else "5m"
+
+    @staticmethod
+    def _apply_usage_pricing_multiplier(usage: Usage, multiplier: float) -> Usage:
+        if multiplier == 1.0:
+            return usage
+        usage.input_cost *= multiplier
+        usage.output_cost *= multiplier
+        usage.cache_read_input_cost *= multiplier
+        usage.cache_creation_input_cost *= multiplier
+        usage.total_cost *= multiplier
+        return usage
+
+    def _parse_anthropic_usage(
+        self,
+        usage: Any,
+        *,
+        pricing_multiplier: float = 1.0,
+        cache_creation_ttl: str = "5m",
+    ) -> Usage:
+        """Parse Anthropic usage into our Usage format."""
+        raw_usage = self._anthropic_usage_to_dict(usage)
+        if (
+            cache_creation_ttl == "1h"
+            and "cache_creation_input_tokens" in raw_usage
+            and "cache_creation_1h_input_tokens" not in raw_usage
+            and "cache_creation_5m_input_tokens" not in raw_usage
+        ):
+            raw_usage["cache_creation_1h_input_tokens"] = raw_usage["cache_creation_input_tokens"]
+        parsed = self.parse_usage(raw_usage)
+        if parsed.total_tokens == 0:
+            parsed.total_tokens = (
+                parsed.input_tokens
+                + parsed.output_tokens
+                + parsed.cache_read_input_tokens
+                + parsed.cache_creation_input_tokens
+            )
+        return self._apply_usage_pricing_multiplier(parsed, pricing_multiplier)
 
     @staticmethod
     def _sanitize_request_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -464,6 +536,8 @@ class AnthropicProvider(BaseProvider):
 
         # Add extra kwargs
         params.update(self._sanitize_request_kwargs(kwargs))
+        pricing_multiplier = self._anthropic_pricing_multiplier(params)
+        cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
         # Build cache params dict for cache key
         cache_params = {
@@ -506,7 +580,11 @@ class AnthropicProvider(BaseProvider):
                 text_content, tool_calls = self._extract_tool_calls_from_response(response.content)
 
                 # Parse usage
-                usage = self._parse_anthropic_usage(response.usage)
+                usage = self._parse_anthropic_usage(
+                    response.usage,
+                    pricing_multiplier=pricing_multiplier,
+                    cache_creation_ttl=cache_creation_ttl,
+                )
 
                 # Track output tokens for rate limiting
                 limit_ctx.output_tokens = usage.output_tokens
@@ -622,6 +700,8 @@ class AnthropicProvider(BaseProvider):
                     params["tool_choice"] = {"type": "tool", "name": tool_choice}
 
         params.update(self._sanitize_request_kwargs(kwargs))
+        pricing_multiplier = self._anthropic_pricing_multiplier(params)
+        cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
         # Emit metadata event
         yield StreamEvent(
@@ -633,6 +713,7 @@ class AnthropicProvider(BaseProvider):
         tool_calls_buffer: dict[int, dict[str, Any]] = {}
         current_block_index = 0
         usage = None
+        raw_usage: dict[str, Any] = {}
         finish_reason = None
 
         # Count input tokens for rate limiting
@@ -713,14 +794,14 @@ class AnthropicProvider(BaseProvider):
                         elif event_type == "message_delta":
                             # Final message updates
                             if hasattr(event, "usage") and event.usage:
-                                output_tokens = event.usage.output_tokens
-                                if usage:
-                                    usage.output_tokens = output_tokens
-                                    usage.total_tokens = usage.input_tokens + output_tokens
-                                else:
-                                    usage = Usage(output_tokens=output_tokens)
+                                raw_usage.update(self._anthropic_usage_to_dict(event.usage))
+                                usage = self._parse_anthropic_usage(
+                                    raw_usage,
+                                    pricing_multiplier=pricing_multiplier,
+                                    cache_creation_ttl=cache_creation_ttl,
+                                )
                                 # Track output tokens for rate limiting
-                                limit_ctx.output_tokens = output_tokens
+                                limit_ctx.output_tokens = usage.output_tokens
 
                             if hasattr(event.delta, "stop_reason"):
                                 finish_reason = event.delta.stop_reason
@@ -728,12 +809,12 @@ class AnthropicProvider(BaseProvider):
                         elif event_type == "message_start":
                             # Initial message with input token count
                             if hasattr(event.message, "usage") and event.message.usage:
-                                actual_input_tokens = event.message.usage.input_tokens
-                                if usage:
-                                    usage.input_tokens = actual_input_tokens
-                                    usage.total_tokens = actual_input_tokens + usage.output_tokens
-                                else:
-                                    usage = Usage(input_tokens=actual_input_tokens)
+                                raw_usage.update(self._anthropic_usage_to_dict(event.message.usage))
+                                usage = self._parse_anthropic_usage(
+                                    raw_usage,
+                                    pricing_multiplier=pricing_multiplier,
+                                    cache_creation_ttl=cache_creation_ttl,
+                                )
 
                 # Build final tool calls list
                 tool_calls = None

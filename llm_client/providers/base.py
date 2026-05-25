@@ -858,9 +858,13 @@ class BaseProvider(Provider, ABC):
             output_tokens=int(parsed.get("output_tokens", 0) or 0),
             total_tokens=int(parsed.get("total_tokens", 0) or 0),
             input_tokens_cached=int(parsed.get("input_tokens_cached", 0) or 0),
+            cache_read_input_tokens=int(parsed.get("cache_read_input_tokens", parsed.get("input_tokens_cached", 0)) or 0),
+            cache_creation_input_tokens=int(parsed.get("cache_creation_input_tokens", 0) or 0),
             output_tokens_reasoning=int(parsed.get("output_tokens_reasoning", 0) or 0),
             input_cost=float(parsed.get("input_cost", 0.0) or 0.0),
             output_cost=float(parsed.get("output_cost", 0.0) or 0.0),
+            cache_read_input_cost=float(parsed.get("cache_read_input_cost", 0.0) or 0.0),
+            cache_creation_input_cost=float(parsed.get("cache_creation_input_cost", 0.0) or 0.0),
             total_cost=float(parsed.get("total_cost", 0.0) or 0.0),
         )
 

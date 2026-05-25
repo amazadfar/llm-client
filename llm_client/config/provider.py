@@ -62,7 +62,7 @@ class AnthropicConfig(ProviderConfig):
     """Anthropic-specific configuration."""
 
     api_key: str | None = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
-    default_model: str = field(default_factory=lambda: _default_model_for("anthropic", fallback="claude-sonnet-4"))
+    default_model: str = field(default_factory=lambda: _default_model_for("anthropic", fallback="claude-opus-4-7"))
 
     # Anthropic-specific settings
     max_thinking_tokens: int | None = None

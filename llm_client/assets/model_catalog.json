@@ -9,7 +9,7 @@
       "completions": "gemini-2.0-flash"
     },
     "anthropic": {
-      "completions": "claude-sonnet-4"
+      "completions": "claude-opus-4-7"
     }
   },
   "models": [
@@ -45,7 +45,8 @@
         "input": 2.5e-06,
         "output": 1e-05,
         "cached_input": 1.25e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "chatgpt-image-latest",
@@ -78,7 +79,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "claude-3-5-haiku",
@@ -102,16 +104,31 @@
       "vision_input": true,
       "audio_input": false,
       "file_input": true,
-      "deprecated": false,
-      "replacement": null,
+      "deprecated": true,
+      "replacement": "claude-haiku-4-5",
       "rate_limits": {
         "tkn_per_min": 100000,
         "req_per_min": 5000
       },
       "usage_costs": {
-        "input": 1e-06,
-        "output": 5e-06,
-        "cached_input": 1e-07
+        "input": 8e-07,
+        "output": 4e-06,
+        "cached_input": 8e-08,
+        "cache_read_input": 8e-08,
+        "cache_write_5m_input": 1e-06,
+        "cache_write_1h_input": 1.6e-06,
+        "batch_input": 4e-07,
+        "batch_output": 2e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
@@ -136,8 +153,8 @@
       "vision_input": true,
       "audio_input": false,
       "file_input": true,
-      "deprecated": false,
-      "replacement": null,
+      "deprecated": true,
+      "replacement": "claude-sonnet-4-6",
       "rate_limits": {
         "tkn_per_min": 80000,
         "req_per_min": 4000
@@ -145,7 +162,124 @@
       "usage_costs": {
         "input": 3e-06,
         "output": 1.5e-05,
-        "cached_input": 3e-07
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-3-7-sonnet",
+      "provider": "anthropic",
+      "model_name": "claude-3-7-sonnet-20250219",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 64000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": true,
+      "replacement": "claude-sonnet-4-6",
+      "rate_limits": {
+        "tkn_per_min": 80000,
+        "req_per_min": 4000
+      },
+      "usage_costs": {
+        "input": 3e-06,
+        "output": 1.5e-05,
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-3-haiku",
+      "provider": "anthropic",
+      "model_name": "claude-3-haiku-20240307",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 4096,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": false,
+      "reasoning_efforts": [],
+      "default_reasoning_effort": null,
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": true,
+      "replacement": "claude-haiku-4-5",
+      "rate_limits": {
+        "tkn_per_min": 100000,
+        "req_per_min": 5000
+      },
+      "usage_costs": {
+        "input": 2.5e-07,
+        "output": 1.25e-06,
+        "cached_input": 2.5e-08,
+        "cache_read_input": 2.5e-08,
+        "cache_write_5m_input": 3.125e-07,
+        "cache_write_1h_input": 5e-07,
+        "batch_input": 1.25e-07,
+        "batch_output": 6.25e-07
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
@@ -170,29 +304,49 @@
       "vision_input": true,
       "audio_input": false,
       "file_input": true,
-      "deprecated": false,
-      "replacement": null,
+      "deprecated": true,
+      "replacement": "claude-opus-4-7",
       "rate_limits": {
         "tkn_per_min": 40000,
         "req_per_min": 2000
       },
       "usage_costs": {
         "input": 1.5e-05,
-        "output": 7.5e-05
+        "output": 7.5e-05,
+        "cached_input": 1.5e-06,
+        "cache_read_input": 1.5e-06,
+        "cache_write_5m_input": 1.875e-05,
+        "cache_write_1h_input": 3e-05,
+        "batch_input": 7.5e-06,
+        "batch_output": 3.75e-05
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
       "key": "claude-4-5-haiku",
       "provider": "anthropic",
-      "model_name": "claude-3-5-haiku-20241022",
+      "model_name": "claude-haiku-4-5-20251001",
       "category": "completions",
       "context_window": 200000,
-      "max_output": 8192,
+      "max_output": 64000,
       "output_dimensions": null,
       "encoding": "cl100k_base",
-      "reasoning": false,
-      "reasoning_efforts": [],
-      "default_reasoning_effort": null,
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
       "tool_calling": true,
       "streaming": true,
       "structured_outputs": false,
@@ -212,16 +366,31 @@
       "usage_costs": {
         "input": 1e-06,
         "output": 5e-06,
-        "cached_input": 1e-07
+        "cached_input": 1e-07,
+        "cache_read_input": 1e-07,
+        "cache_write_5m_input": 1.25e-06,
+        "cache_write_1h_input": 2e-06,
+        "batch_input": 5e-07,
+        "batch_output": 2.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
       "key": "claude-4-5-opus",
       "provider": "anthropic",
-      "model_name": "claude-opus-4-20250514",
+      "model_name": "claude-opus-4-5-20251101",
       "category": "completions",
       "context_window": 200000,
-      "max_output": 8192,
+      "max_output": 64000,
       "output_dimensions": null,
       "encoding": "cl100k_base",
       "reasoning": true,
@@ -244,27 +413,46 @@
       "deprecated": false,
       "replacement": null,
       "rate_limits": {
-        "tkn_per_min": 60000,
-        "req_per_min": 3000
+        "tkn_per_min": 80000,
+        "req_per_min": 4000
       },
       "usage_costs": {
         "input": 5e-06,
         "output": 2.5e-05,
-        "cached_input": 5e-07
+        "cached_input": 5e-07,
+        "cache_read_input": 5e-07,
+        "cache_write_5m_input": 6.25e-06,
+        "cache_write_1h_input": 1e-05,
+        "batch_input": 2.5e-06,
+        "batch_output": 1.25e-05
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
       "key": "claude-4-5-sonnet",
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-20250514",
+      "model_name": "claude-sonnet-4-5-20250929",
       "category": "completions",
       "context_window": 200000,
-      "max_output": 8192,
+      "max_output": 64000,
       "output_dimensions": null,
       "encoding": "cl100k_base",
-      "reasoning": false,
-      "reasoning_efforts": [],
-      "default_reasoning_effort": null,
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
       "tool_calling": true,
       "streaming": true,
       "structured_outputs": false,
@@ -284,7 +472,75 @@
       "usage_costs": {
         "input": 3e-06,
         "output": 1.5e-05,
-        "cached_input": 3e-07
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-haiku-4-5",
+      "provider": "anthropic",
+      "model_name": "claude-haiku-4-5-20251001",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 64000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": false,
+      "replacement": null,
+      "rate_limits": {
+        "tkn_per_min": 120000,
+        "req_per_min": 6000
+      },
+      "usage_costs": {
+        "input": 1e-06,
+        "output": 5e-06,
+        "cached_input": 1e-07,
+        "cache_read_input": 1e-07,
+        "cache_write_5m_input": 1.25e-06,
+        "cache_write_1h_input": 2e-06,
+        "batch_input": 5e-07,
+        "batch_output": 2.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
       }
     },
     {
@@ -293,7 +549,60 @@
       "model_name": "claude-opus-4-20250514",
       "category": "completions",
       "context_window": 200000,
-      "max_output": 8192,
+      "max_output": 32000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": true,
+      "replacement": "claude-opus-4-7",
+      "rate_limits": {
+        "tkn_per_min": 60000,
+        "req_per_min": 3000
+      },
+      "usage_costs": {
+        "input": 1.5e-05,
+        "output": 7.5e-05,
+        "cached_input": 1.5e-06,
+        "cache_read_input": 1.5e-06,
+        "cache_write_5m_input": 1.875e-05,
+        "cache_write_1h_input": 3e-05,
+        "batch_input": 7.5e-06,
+        "batch_output": 3.75e-05
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-opus-4-1",
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-1-20250805",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 32000,
       "output_dimensions": null,
       "encoding": "cl100k_base",
       "reasoning": true,
@@ -320,9 +629,217 @@
         "req_per_min": 3000
       },
       "usage_costs": {
+        "input": 1.5e-05,
+        "output": 7.5e-05,
+        "cached_input": 1.5e-06,
+        "cache_read_input": 1.5e-06,
+        "cache_write_5m_input": 1.875e-05,
+        "cache_write_1h_input": 3e-05,
+        "batch_input": 7.5e-06,
+        "batch_output": 3.75e-05
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-opus-4-5",
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-5-20251101",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 64000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": false,
+      "replacement": null,
+      "rate_limits": {
+        "tkn_per_min": 80000,
+        "req_per_min": 4000
+      },
+      "usage_costs": {
         "input": 5e-06,
         "output": 2.5e-05,
-        "cached_input": 5e-07
+        "cached_input": 5e-07,
+        "cache_read_input": 5e-07,
+        "cache_write_5m_input": 6.25e-06,
+        "cache_write_1h_input": 1e-05,
+        "batch_input": 2.5e-06,
+        "batch_output": 1.25e-05
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-opus-4-6",
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-6",
+      "category": "completions",
+      "context_window": 1000000,
+      "max_output": 128000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": false,
+      "replacement": null,
+      "rate_limits": {
+        "tkn_per_min": 120000,
+        "req_per_min": 6000
+      },
+      "usage_costs": {
+        "input": 5e-06,
+        "output": 2.5e-05,
+        "cached_input": 5e-07,
+        "cache_read_input": 5e-07,
+        "cache_write_5m_input": 6.25e-06,
+        "cache_write_1h_input": 1e-05,
+        "batch_input": 2.5e-06,
+        "batch_output": 1.25e-05,
+        "fast_mode_input": 3e-05,
+        "fast_mode_output": 0.00015
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        },
+        "data_residency": {
+          "inference_geo_us_multiplier": 1.1,
+          "applies_to": [
+            "input",
+            "output",
+            "cache_write_5m_input",
+            "cache_write_1h_input",
+            "cache_read_input"
+          ]
+        },
+        "fast_mode": {
+          "input_output_multiplier": 6.0,
+          "available_on": [
+            "messages"
+          ],
+          "batch_api_support": false
+        }
+      }
+    },
+    {
+      "key": "claude-opus-4-7",
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-7",
+      "category": "completions",
+      "context_window": 1000000,
+      "max_output": 128000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [],
+      "default_reasoning_effort": null,
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": false,
+      "replacement": null,
+      "rate_limits": {
+        "tkn_per_min": 120000,
+        "req_per_min": 6000
+      },
+      "usage_costs": {
+        "input": 5e-06,
+        "output": 2.5e-05,
+        "cached_input": 5e-07,
+        "cache_read_input": 5e-07,
+        "cache_write_5m_input": 6.25e-06,
+        "cache_write_1h_input": 1e-05,
+        "batch_input": 2.5e-06,
+        "batch_output": 1.25e-05,
+        "fast_mode_input": 3e-05,
+        "fast_mode_output": 0.00015
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        },
+        "data_residency": {
+          "inference_geo_us_multiplier": 1.1,
+          "applies_to": [
+            "input",
+            "output",
+            "cache_write_5m_input",
+            "cache_write_1h_input",
+            "cache_read_input"
+          ]
+        },
+        "fast_mode": {
+          "input_output_multiplier": 6.0,
+          "available_on": [
+            "messages"
+          ],
+          "batch_api_support": false
+        }
       }
     },
     {
@@ -331,12 +848,69 @@
       "model_name": "claude-sonnet-4-20250514",
       "category": "completions",
       "context_window": 200000,
-      "max_output": 8192,
+      "max_output": 64000,
       "output_dimensions": null,
       "encoding": "cl100k_base",
-      "reasoning": false,
-      "reasoning_efforts": [],
-      "default_reasoning_effort": null,
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": true,
+      "replacement": "claude-sonnet-4-6",
+      "rate_limits": {
+        "tkn_per_min": 100000,
+        "req_per_min": 5000
+      },
+      "usage_costs": {
+        "input": 3e-06,
+        "output": 1.5e-05,
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-sonnet-4-5",
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-5-20250929",
+      "category": "completions",
+      "context_window": 200000,
+      "max_output": 64000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
       "tool_calling": true,
       "streaming": true,
       "structured_outputs": false,
@@ -356,7 +930,85 @@
       "usage_costs": {
         "input": 3e-06,
         "output": 1.5e-05,
-        "cached_input": 3e-07
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        }
+      }
+    },
+    {
+      "key": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "category": "completions",
+      "context_window": 1000000,
+      "max_output": 64000,
+      "output_dimensions": null,
+      "encoding": "cl100k_base",
+      "reasoning": true,
+      "reasoning_efforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default_reasoning_effort": "medium",
+      "tool_calling": true,
+      "streaming": true,
+      "structured_outputs": false,
+      "responses_api": false,
+      "background_responses": false,
+      "responses_native_tools": false,
+      "normalized_output_items": false,
+      "vision_input": true,
+      "audio_input": false,
+      "file_input": true,
+      "deprecated": false,
+      "replacement": null,
+      "rate_limits": {
+        "tkn_per_min": 120000,
+        "req_per_min": 6000
+      },
+      "usage_costs": {
+        "input": 3e-06,
+        "output": 1.5e-05,
+        "cached_input": 3e-07,
+        "cache_read_input": 3e-07,
+        "cache_write_5m_input": 3.75e-06,
+        "cache_write_1h_input": 6e-06,
+        "batch_input": 1.5e-06,
+        "batch_output": 7.5e-06
+      },
+      "pricing_features": {
+        "prompt_caching": {
+          "cache_write_5m_multiplier": 1.25,
+          "cache_write_1h_multiplier": 2.0,
+          "cache_read_multiplier": 0.1
+        },
+        "batch": {
+          "input_output_discount_multiplier": 0.5
+        },
+        "data_residency": {
+          "inference_geo_us_multiplier": 1.1,
+          "applies_to": [
+            "input",
+            "output",
+            "cache_write_5m_input",
+            "cache_write_1h_input",
+            "cache_read_input"
+          ]
+        }
       }
     },
     {
@@ -391,7 +1043,8 @@
         "input": 2.5e-06,
         "output": 1e-05,
         "cached_input": 1.25e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "dall-e-2",
@@ -424,7 +1077,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "dall-e-3",
@@ -457,7 +1111,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gemini-1.5-pro",
@@ -491,7 +1146,8 @@
         "input": 1.25e-06,
         "output": 5e-06,
         "cached_input": 3.125e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gemini-2.0-flash",
@@ -525,7 +1181,8 @@
         "input": 1e-07,
         "output": 4e-07,
         "cached_input": 2.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gemini-3-flash",
@@ -559,7 +1216,8 @@
         "input": 5e-07,
         "output": 3e-06,
         "cached_input": 1.25e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gemini-3-pro",
@@ -597,7 +1255,8 @@
         "input": 2e-06,
         "output": 1.2e-05,
         "cached_input": 5e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4.1",
@@ -631,7 +1290,8 @@
         "input": 2e-06,
         "output": 8e-06,
         "cached_input": 5e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4.1-mini",
@@ -665,7 +1325,8 @@
         "input": 4e-07,
         "output": 1.6e-06,
         "cached_input": 1e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4.1-nano",
@@ -699,7 +1360,8 @@
         "input": 1e-07,
         "output": 4e-07,
         "cached_input": 2.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o",
@@ -733,7 +1395,8 @@
         "input": 2.5e-06,
         "output": 1e-05,
         "cached_input": 1.25e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-audio-preview",
@@ -766,7 +1429,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini",
@@ -800,7 +1464,8 @@
         "input": 1.5e-07,
         "output": 6e-07,
         "cached_input": 7.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini-audio-preview",
@@ -833,7 +1498,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini-realtime-preview",
@@ -867,7 +1533,8 @@
         "input": 6e-07,
         "output": 2.4e-06,
         "cached_input": 6e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini-search-preview",
@@ -901,7 +1568,8 @@
         "input": 1.5e-07,
         "output": 6e-07,
         "cached_input": 7.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini-transcribe",
@@ -934,7 +1602,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-mini-tts",
@@ -967,7 +1636,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-realtime-preview",
@@ -1001,7 +1671,8 @@
         "input": 4e-06,
         "output": 1.6e-05,
         "cached_input": 4e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-search-preview",
@@ -1035,7 +1706,8 @@
         "input": 2.5e-06,
         "output": 1e-05,
         "cached_input": 1.25e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-transcribe",
@@ -1068,7 +1740,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-4o-transcribe-diarize",
@@ -1101,7 +1774,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5",
@@ -1140,7 +1814,8 @@
         "input": 1.25e-06,
         "output": 1e-05,
         "cached_input": 1.25e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5-chat-latest",
@@ -1179,7 +1854,8 @@
         "input": 1.25e-06,
         "output": 1e-05,
         "cached_input": 1.25e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5-codex",
@@ -1218,7 +1894,8 @@
         "input": 1.5e-06,
         "output": 1.2e-05,
         "cached_input": 1.5e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5-mini",
@@ -1257,7 +1934,8 @@
         "input": 2.5e-07,
         "output": 2e-06,
         "cached_input": 2.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5-nano",
@@ -1296,7 +1974,8 @@
         "input": 5e-08,
         "output": 4e-07,
         "cached_input": 5e-09
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5-pro",
@@ -1335,7 +2014,8 @@
         "input": 1.5e-05,
         "output": 0.00012,
         "cached_input": 1.5e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.1",
@@ -1375,7 +2055,8 @@
         "input": 1.25e-06,
         "output": 1e-05,
         "cached_input": 1.25e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.1-chat-latest",
@@ -1415,7 +2096,8 @@
         "input": 1.25e-06,
         "output": 1e-05,
         "cached_input": 1.25e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.1-codex",
@@ -1455,7 +2137,8 @@
         "input": 1.4e-06,
         "output": 1.12e-05,
         "cached_input": 1.4e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.1-codex-max",
@@ -1496,7 +2179,8 @@
         "input": 2.1e-06,
         "output": 1.68e-05,
         "cached_input": 2.1e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.1-codex-mini",
@@ -1536,7 +2220,8 @@
         "input": 4e-07,
         "output": 3.2e-06,
         "cached_input": 4e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.2",
@@ -1577,7 +2262,8 @@
         "input": 1.75e-06,
         "output": 1.4e-05,
         "cached_input": 1.75e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.2-chat-latest",
@@ -1618,7 +2304,8 @@
         "input": 1.75e-06,
         "output": 1.4e-05,
         "cached_input": 1.75e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.2-pro",
@@ -1657,7 +2344,8 @@
         "input": 1.8e-05,
         "output": 0.000144,
         "cached_input": 1.8e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.4",
@@ -1697,7 +2385,8 @@
         "input": 2.5e-06,
         "output": 1.5e-05,
         "cached_input": 2.5e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.4-mini",
@@ -1737,7 +2426,8 @@
         "input": 7.5e-07,
         "output": 4.5e-06,
         "cached_input": 7.5e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.4-nano",
@@ -1777,7 +2467,8 @@
         "input": 2e-07,
         "output": 1.25e-06,
         "cached_input": 2e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-5.4-pro",
@@ -1815,7 +2506,8 @@
         "input": 3e-05,
         "output": 0.00018,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-audio",
@@ -1848,7 +2540,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-audio-mini",
@@ -1881,7 +2574,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-image-1",
@@ -1914,7 +2608,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-image-1-mini",
@@ -1947,7 +2642,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-image-1.5",
@@ -1980,7 +2676,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-oss-120b",
@@ -2018,7 +2715,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-oss-20b",
@@ -2056,7 +2754,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-realtime",
@@ -2090,7 +2789,8 @@
         "input": 4e-06,
         "output": 1.6e-05,
         "cached_input": 4e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "gpt-realtime-mini",
@@ -2124,7 +2824,8 @@
         "input": 6e-07,
         "output": 2.4e-06,
         "cached_input": 6e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o1",
@@ -2162,7 +2863,8 @@
         "input": 1.5e-05,
         "output": 6e-05,
         "cached_input": 1.5e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o1-mini",
@@ -2200,7 +2902,8 @@
         "input": 3e-06,
         "output": 1.2e-05,
         "cached_input": 3e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o1-preview",
@@ -2237,7 +2940,8 @@
         "input": 1.5e-05,
         "output": 6e-05,
         "cached_input": 1.5e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o1-pro",
@@ -2274,7 +2978,8 @@
         "input": 2e-05,
         "output": 8e-05,
         "cached_input": 2e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o3",
@@ -2312,7 +3017,8 @@
         "input": 8e-06,
         "output": 3.2e-05,
         "cached_input": 8e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o3-deep-research",
@@ -2349,7 +3055,8 @@
         "input": 1e-05,
         "output": 4e-05,
         "cached_input": 1e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o3-mini",
@@ -2387,7 +3094,8 @@
         "input": 1.5e-06,
         "output": 6e-06,
         "cached_input": 1.5e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o3-pro",
@@ -2424,7 +3132,8 @@
         "input": 1.2e-05,
         "output": 4.8e-05,
         "cached_input": 1.2e-06
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o4-mini",
@@ -2462,7 +3171,8 @@
         "input": 3e-06,
         "output": 1.2e-05,
         "cached_input": 3e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "o4-mini-deep-research",
@@ -2498,7 +3208,8 @@
         "input": 2e-06,
         "output": 8e-06,
         "cached_input": 2e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "omni-moderation-latest",
@@ -2531,7 +3242,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "text-embedding-3-large",
@@ -2563,7 +3275,8 @@
       },
       "usage_costs": {
         "input": 1.3e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "text-embedding-3-small",
@@ -2595,7 +3308,8 @@
       },
       "usage_costs": {
         "input": 2e-08
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "text-embedding-ada-002",
@@ -2627,7 +3341,8 @@
       },
       "usage_costs": {
         "input": 1e-07
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "text-moderation-latest",
@@ -2660,7 +3375,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "text-moderation-stable",
@@ -2693,7 +3409,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "tts-1",
@@ -2726,7 +3443,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "tts-1-hd",
@@ -2759,7 +3477,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     },
     {
       "key": "whisper-1",
@@ -2792,7 +3511,8 @@
         "input": 0.0,
         "output": 0.0,
         "cached_input": 0.0
-      }
+      },
+      "pricing_features": {}
     }
   ]
 }

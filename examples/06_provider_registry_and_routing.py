@@ -56,7 +56,7 @@ def build_registry(
 
 async def main() -> None:
     primary_model = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
-    secondary_model = os.getenv("LLM_CLIENT_EXAMPLE_SECONDARY_MODEL", "claude-3-5-haiku")
+    secondary_model = os.getenv("LLM_CLIENT_EXAMPLE_SECONDARY_MODEL", "claude-haiku-4-5")
     primary_provider = OpenAIProvider(model=primary_model)
     secondary_provider = AnthropicProvider(model=secondary_model)
     try:

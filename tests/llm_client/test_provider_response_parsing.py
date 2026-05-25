@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 import llm_client.providers.google as google_mod
 from llm_client.content import ContentResponseEnvelope
+from llm_client.models import ModelProfile
 from llm_client.providers.anthropic import AnthropicProvider
 from llm_client.providers.google import GoogleProvider
 from llm_client.providers.openai import OpenAIProvider
@@ -200,6 +201,64 @@ def test_anthropic_complete_helpers_parse_tool_calls_and_usage() -> None:
     assert tool_calls is not None
     assert tool_calls[0].name == "lookup"
     assert usage.total_tokens == 3
+
+
+def test_anthropic_usage_parsing_preserves_cache_read_and_creation_costs() -> None:
+    provider = AnthropicProvider.__new__(AnthropicProvider)
+    provider._model = ModelProfile.get("claude-haiku-4-5")
+
+    usage = provider._parse_anthropic_usage(
+        SimpleNamespace(
+            input_tokens=1_000,
+            output_tokens=100,
+            cache_read_input_tokens=2_000,
+            cache_creation_input_tokens=3_000,
+        )
+    )
+
+    assert usage.input_tokens == 1_000
+    assert usage.output_tokens == 100
+    assert usage.cache_read_input_tokens == 2_000
+    assert usage.cache_creation_input_tokens == 3_000
+    assert usage.input_tokens_cached == 2_000
+    assert usage.total_tokens == 6_100
+    assert usage.cache_read_input_cost == pytest.approx(0.0002)
+    assert usage.cache_creation_input_cost == pytest.approx(0.00375)
+    assert usage.input_cost == pytest.approx(0.00495)
+    assert usage.output_cost == pytest.approx(0.0005)
+    assert usage.total_cost == pytest.approx(0.00545)
+
+
+def test_anthropic_usage_parsing_applies_data_residency_multiplier() -> None:
+    provider = AnthropicProvider.__new__(AnthropicProvider)
+    provider._model = ModelProfile.get("claude-sonnet-4-6")
+    multiplier = provider._anthropic_pricing_multiplier({"inference_geo": "us"})
+
+    usage = provider._parse_anthropic_usage(
+        SimpleNamespace(input_tokens=1_000, output_tokens=100),
+        pricing_multiplier=multiplier,
+    )
+
+    assert multiplier == 1.1
+    assert usage.input_cost == pytest.approx(0.0033)
+    assert usage.output_cost == pytest.approx(0.00165)
+    assert usage.total_cost == pytest.approx(0.00495)
+
+
+def test_anthropic_usage_parsing_prices_one_hour_cache_creation_when_request_is_one_hour_only() -> None:
+    provider = AnthropicProvider.__new__(AnthropicProvider)
+    provider._model = ModelProfile.get("claude-haiku-4-5")
+    ttl = provider._cache_creation_ttl_from_params({"cache_control": {"type": "ephemeral", "ttl": "1h"}})
+
+    usage = provider._parse_anthropic_usage(
+        SimpleNamespace(input_tokens=1_000, output_tokens=100, cache_creation_input_tokens=3_000),
+        cache_creation_ttl=ttl,
+    )
+
+    assert ttl == "1h"
+    assert usage.cache_creation_input_tokens == 3_000
+    assert usage.cache_creation_input_cost == pytest.approx(0.006)
+    assert usage.total_cost == pytest.approx(0.0075)
 
 
 @pytest.mark.asyncio

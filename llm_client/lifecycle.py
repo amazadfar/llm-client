@@ -83,8 +83,12 @@ class UsageBreakdown:
     output_tokens: int = 0
     total_tokens: int = 0
     cached_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
     input_cost: Decimal = field(default_factory=lambda: Decimal("0"))
     output_cost: Decimal = field(default_factory=lambda: Decimal("0"))
+    cache_read_input_cost: Decimal = field(default_factory=lambda: Decimal("0"))
+    cache_creation_input_cost: Decimal = field(default_factory=lambda: Decimal("0"))
     total_cost: Decimal = field(default_factory=lambda: Decimal("0"))
 
     @classmethod
@@ -100,8 +104,12 @@ class UsageBreakdown:
             output_tokens=int(value.get("output_tokens", 0) or 0),
             total_tokens=int(value.get("total_tokens", 0) or 0),
             cached_input_tokens=int(value.get("input_tokens_cached", 0) or 0),
+            cache_read_input_tokens=int(value.get("cache_read_input_tokens", value.get("input_tokens_cached", 0)) or 0),
+            cache_creation_input_tokens=int(value.get("cache_creation_input_tokens", 0) or 0),
             input_cost=Decimal(str(value.get("input_cost", 0) or 0)),
             output_cost=Decimal(str(value.get("output_cost", 0) or 0)),
+            cache_read_input_cost=Decimal(str(value.get("cache_read_input_cost", 0) or 0)),
+            cache_creation_input_cost=Decimal(str(value.get("cache_creation_input_cost", 0) or 0)),
             total_cost=Decimal(str(value.get("total_cost", 0) or 0)),
         )
 
@@ -111,8 +119,12 @@ class UsageBreakdown:
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
             "input_tokens_cached": self.cached_input_tokens,
+            "cache_read_input_tokens": self.cache_read_input_tokens,
+            "cache_creation_input_tokens": self.cache_creation_input_tokens,
             "input_cost": float(self.input_cost),
             "output_cost": float(self.output_cost),
+            "cache_read_input_cost": float(self.cache_read_input_cost),
+            "cache_creation_input_cost": float(self.cache_creation_input_cost),
             "total_cost": float(self.total_cost),
         }
 
@@ -262,8 +274,12 @@ def accumulate_session_report(
             output_tokens=usage.output_tokens + report.usage.output_tokens,
             total_tokens=usage.total_tokens + report.usage.total_tokens,
             cached_input_tokens=usage.cached_input_tokens + report.usage.cached_input_tokens,
+            cache_read_input_tokens=usage.cache_read_input_tokens + report.usage.cache_read_input_tokens,
+            cache_creation_input_tokens=usage.cache_creation_input_tokens + report.usage.cache_creation_input_tokens,
             input_cost=usage.input_cost + report.usage.input_cost,
             output_cost=usage.output_cost + report.usage.output_cost,
+            cache_read_input_cost=usage.cache_read_input_cost + report.usage.cache_read_input_cost,
+            cache_creation_input_cost=usage.cache_creation_input_cost + report.usage.cache_creation_input_cost,
             total_cost=usage.total_cost + report.usage.total_cost,
         )
 

@@ -207,11 +207,11 @@ def get_default_provider_registry() -> ProviderRegistry:
 
         catalog = get_default_model_catalog()
         openai_default = catalog.default_key_for_provider("openai") or "gpt-5"
-        anthropic_default = catalog.default_key_for_provider("anthropic") or "claude-sonnet-4"
+        anthropic_default = catalog.default_key_for_provider("anthropic") or "claude-opus-4-7"
         google_default = catalog.default_key_for_provider("google") or "gemini-2.0-flash"
     except Exception:
         openai_default = "gpt-5"
-        anthropic_default = "claude-sonnet-4"
+        anthropic_default = "claude-opus-4-7"
         google_default = "gemini-2.0-flash"
     registry = ProviderRegistry()
     registry.register(

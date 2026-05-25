@@ -153,6 +153,9 @@
               "minimum": 0
             }
           },
+          "pricing_features": {
+            "type": "object"
+          },
           "responses_api": {
             "type": "boolean"
           },

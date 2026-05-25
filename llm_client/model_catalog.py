@@ -58,6 +58,7 @@ class ModelMetadata:
     replacement: str | None
     rate_limits: dict[str, int]
     usage_costs: dict[str, float]
+    pricing_features: dict[str, Any]
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -86,6 +87,7 @@ class ModelMetadata:
             "replacement": self.replacement,
             "rate_limits": dict(self.rate_limits),
             "usage_costs": dict(self.usage_costs),
+            "pricing_features": dict(self.pricing_features),
         }
 
 
@@ -349,6 +351,7 @@ def metadata_from_profile(profile: type[ModelProfile]) -> ModelMetadata:
         replacement=getattr(profile, "replacement", None),
         rate_limits=rate_limits,
         usage_costs=usage_costs,
+        pricing_features=dict(getattr(profile, "pricing_features", {}) or {}),
     )
 
 
@@ -365,7 +368,7 @@ def _fallback_catalog_document_from_profiles() -> dict[str, object]:
                 "completions": "gemini-2.0-flash",
             },
             "anthropic": {
-                "completions": "claude-sonnet-4",
+                "completions": "claude-opus-4-7",
             },
         },
         "models": items,
@@ -463,6 +466,7 @@ def _catalog_from_document(document: dict[str, Any], *, source: str | None = Non
             replacement=None if raw.get("replacement") is None else str(raw["replacement"]),
             rate_limits={str(name): int(value) for name, value in dict(raw.get("rate_limits") or {}).items()},
             usage_costs={str(name): float(value) for name, value in dict(raw.get("usage_costs") or {}).items()},
+            pricing_features=dict(raw.get("pricing_features") or {}),
         )
         items.append(item)
     return ModelCatalog(items, defaults=_normalize_defaults(document.get("defaults")), source=source)

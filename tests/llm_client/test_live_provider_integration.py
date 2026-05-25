@@ -36,7 +36,7 @@ async def test_live_anthropic_complete_smoke() -> None:
 
     from llm_client.providers.anthropic import AnthropicProvider
 
-    provider = AnthropicProvider(model="claude-sonnet-4")
+    provider = AnthropicProvider(model="claude-sonnet-4-6")
     result = await provider.complete("Reply with the word ok only.", max_tokens=16)
 
     assert result.ok is True
