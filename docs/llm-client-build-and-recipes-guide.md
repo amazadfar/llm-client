@@ -8,8 +8,9 @@ Use it together with:
 - [llm-client-usage-and-capabilities-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-usage-and-capabilities-guide.md)
 - [examples/README.md](/home/namiral/Projects/Packages/llm-client-v1/examples/README.md)
 
-The package README is the broad reference. This guide is the "show me how to
-do the real thing" layer.
+The root README is the concise package overview. The package API guide and
+usage guide are the broad references. This guide is the "show me how to do the
+real thing" layer.
 
 ## 1. Install The Package For The Capabilities You Need
 

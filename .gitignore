@@ -161,6 +161,8 @@ logs
 artifacts/
 tmp/
 .specstory/
+plans
+CTX.md
 
 backend/.venv/
 *.pyc
