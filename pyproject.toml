@@ -107,8 +107,8 @@ all = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/amirmasoudaz/llm-client/tree/main/docs"
-Repository = "https://github.com/amirmasoudaz/llm-client"
+Documentation = "https://github.com/amazadfar/llm-client/tree/main/docs"
+Repository = "https://github.com/amazadfar/llm-client"
 
 [tool.setuptools.packages.find]
 include = ["llm_client*"]

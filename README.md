@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](#)
-[![GitHub stars](https://img.shields.io/github/stars/amirmasoudaz/llm-client?style=social)](https://github.com/amirmasoudaz/llm-client)
+[![GitHub stars](https://img.shields.io/github/stars/amazadfar/llm-client?style=social)](https://github.com/amazadfar/llm-client)
 
 `llm-client` sits between your Python application and vendor SDKs. It normalizes OpenAI, Anthropic, and Gemini behind one execution engine with retries, routing, failover, caching, idempotency, and hooks; adds a typed tool and agent runtime; validates structured output with repair; and exposes lifecycle events, redaction, and replay primitives for production debugging. The design choice is framework-level reliability without framework-level opacity. Control flow stays in your application code, not behind a wall of abstractions.
 
@@ -76,23 +76,23 @@ and `ANTHROPIC_API_KEY`.
 `llm-client` is not yet on PyPI. Install directly from GitHub:
 
 ```bash
-pip install "git+https://github.com/amirmasoudaz/llm-client.git"
+pip install "git+https://github.com/amazadfar/llm-client.git"
 ```
 
 Optional extras for providers, storage, and telemetry:
 
 ```bash
-pip install "llm-client[anthropic] @ git+https://github.com/amirmasoudaz/llm-client.git"
-pip install "llm-client[google] @ git+https://github.com/amirmasoudaz/llm-client.git"
-pip install "llm-client[postgres,redis,qdrant] @ git+https://github.com/amirmasoudaz/llm-client.git"
-pip install "llm-client[telemetry] @ git+https://github.com/amirmasoudaz/llm-client.git"
-pip install "llm-client[all] @ git+https://github.com/amirmasoudaz/llm-client.git"
+pip install "llm-client[anthropic] @ git+https://github.com/amazadfar/llm-client.git"
+pip install "llm-client[google] @ git+https://github.com/amazadfar/llm-client.git"
+pip install "llm-client[postgres,redis,qdrant] @ git+https://github.com/amazadfar/llm-client.git"
+pip install "llm-client[telemetry] @ git+https://github.com/amazadfar/llm-client.git"
+pip install "llm-client[all] @ git+https://github.com/amazadfar/llm-client.git"
 ```
 
 Or clone and install in editable mode:
 
 ```bash
-git clone https://github.com/amirmasoudaz/llm-client.git
+git clone https://github.com/amazadfar/llm-client.git
 cd llm-client
 pip install -e ".[all]"
 ```
