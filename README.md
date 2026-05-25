@@ -146,15 +146,13 @@ The full cookbook lives in [examples/](examples/).
 ## Documentation
 
 - [Architecture](docs/llm-client-architecture.md)
-- [Extraction matrix](docs/llm-client-extraction-matrix.md)
-- [Agent runtime adoption notes](docs/llm-client-adoption-notes-agent-runtime.md)
-- [Intelligence layer adoption notes](docs/llm-client-adoption-notes-intelligence-layer.md)
 - [Public API map](docs/llm-client-public-api-v1.md)
+- [Package API guide](docs/llm-client-package-api-guide.md)
+- [Provider setup](docs/llm-client-provider-setup-guide.md)
 - [Guides and cookbook index](docs/llm-client-guides-index.md)
 - [Installation matrix](docs/llm-client-installation-matrix.md)
-- [Release automation](docs/llm-client-release-automation.md)
-- [Threat model](docs/llm-client-threat-model.md)
-- [Secure deployment defaults](docs/llm-client-secure-deployment-defaults.md)
+- [Semantic versioning policy](docs/llm-client-semver-policy.md)
+- [Support policy](docs/llm-client-support-policy.md)
 
 ## License
 

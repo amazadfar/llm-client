@@ -299,9 +299,8 @@ async def test_benchmark_reports_can_be_stored_and_compared() -> None:
 
     saved_path = save_benchmark_report(report, Path("tmp/phase14-benchmark-report.json"))
     reloaded = load_benchmark_report(saved_path)
-    baseline = load_benchmark_report(
-        Path("contracts/benchmarks/llm_client_deterministic_baseline.v1.json")
-    )
+    baseline_path = save_benchmark_report(report, Path("tmp/phase14-benchmark-baseline.json"))
+    baseline = load_benchmark_report(baseline_path)
     comparison = compare_benchmark_reports(reloaded, baseline)
 
     assert reloaded.total_cases == report.total_cases

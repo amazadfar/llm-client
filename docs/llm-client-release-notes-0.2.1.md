@@ -27,8 +27,7 @@ cleanup after the `0.2.0` OpenAI/provider expansion release.
 
 - Updated installation guidance in
   [docs/llm-client-installation-matrix.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-installation-matrix.md).
-- Updated packaging guidance in
-  [docs/llm-client-packaging-readiness.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-packaging-readiness.md).
+- Updated package installation guidance for the optional cache dependencies.
 - Updated cache backend notes in
   [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
   and
