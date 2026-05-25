@@ -9,7 +9,7 @@ examples under [`examples/`](../examples/README.md).
   [llm-client-architecture.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-architecture.md)
 - Public API map:
   [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
-- Package reference:
+- Root README and positioning:
   [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
 - Package API guide:
   [llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md)

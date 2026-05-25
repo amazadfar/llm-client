@@ -67,7 +67,7 @@ Typical construction:
 
 ```python
 OpenAIProvider(model="gpt-5-mini", api_key="...")
-AnthropicProvider(model="claude-sonnet-4", api_key="...")
+AnthropicProvider(model="claude-sonnet-4-6", api_key="...")
 GoogleProvider(model="gemini-2.0-flash", api_key="...")
 ```
 
@@ -297,7 +297,7 @@ For Anthropic:
 ```bash
 export ANTHROPIC_API_KEY=...
 export LLM_CLIENT_EXAMPLE_PROVIDER=anthropic
-export LLM_CLIENT_EXAMPLE_MODEL=claude-sonnet-4
+export LLM_CLIENT_EXAMPLE_MODEL=claude-sonnet-4-6
 ```
 
 For Google:
