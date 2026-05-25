@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-client"
-version = "1.2.0"
+version = "0.3.1"
 description = "Standalone async-first LLM runtime framework with providers, engine, agents, tools, context, cache, observability, and benchmarks."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,7 +26,7 @@ keywords = [
   "routing",
 ]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",

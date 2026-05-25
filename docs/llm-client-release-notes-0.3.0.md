@@ -1,8 +1,8 @@
-# llm-client 1.2.0 Release Notes
+# llm-client 0.3.0 Release Notes
 
 Last updated: 2026-04-16
 
-`llm_client` `1.2.0` is a minor release focused on OpenAI product-surface
+`llm_client` `0.3.0` is a minor release focused on OpenAI product-surface
 expansion, stronger hosted-tool and Realtime ergonomics, broader retrieval
 controls, and updated model coverage.
 
