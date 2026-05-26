@@ -163,7 +163,8 @@ tmp/
 .specstory/
 plans
 contracts/benchmarks/
-CTX.md
+.cursorindexingignore
+uv.lock
 
 backend/.venv/
 *.pyc

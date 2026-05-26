@@ -55,6 +55,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+providers = [
+  "anthropic>=0.79,<1",
+  "google-auth>=2.48,<3",
+  "google-genai>=1.63,<2",
+]
 anthropic = [
   "anthropic>=0.79,<1",
 ]
