@@ -1,6 +1,7 @@
 from decimal import Decimal
 from functools import cache, lru_cache
 import re
+import warnings
 from typing import Any, ClassVar
 
 import logging
@@ -44,6 +45,21 @@ def _get_encoder(name: str) -> Any:
 
 
 _MILLION = Decimal("1000000")
+
+# Conservative, deliberately non-authoritative context window used only so that token /
+# budget arithmetic does not crash for unresolved unknown models. It is intentionally
+# small (claims no large capacity) and accompanied by ``resolved = False`` so callers can
+# detect that the value is a fallback rather than a real model limit.
+_UNRESOLVED_CONTEXT_WINDOW = 8192
+
+# --- TEMPORARY lifecycle guard (Phase 1; superseded by Catalog v2 in Phase 2) -------
+# Models known to be fully retired (past their retirement date) and likely unavailable.
+# Intentionally narrow: structured lifecycle status + announced/deprecation/retirement
+# dates land with Catalog v2, which replaces this hardcoded map.
+_RETIRED_MODELS: dict[str, str] = {
+    # key: retirement date (ISO-8601)
+    "claude-3-haiku": "2026-04-19",
+}
 
 
 def _per_mtok(value: str) -> Decimal:
@@ -196,6 +212,14 @@ class ModelProfile:
     audio_input_support: ClassVar[bool | None] = None
     file_input_support: ClassVar[bool | None] = None
 
+    # Whether this profile is backed by real catalog metadata. Conservative profiles
+    # constructed for unknown/unrecognized model IDs set this to ``False`` and expose no
+    # inferred capabilities, modalities, lifecycle, limits, or prices.
+    resolved: ClassVar[bool] = True
+    # Global switch to restore strict behavior (raise on unknown model IDs) instead of
+    # constructing a conservative unresolved profile. See ``ModelProfile.get``.
+    strict_unknown_models: ClassVar[bool] = False
+
     max_output: ClassVar[int | None] = None
     output_dimensions: ClassVar[int | None] = None
 
@@ -207,6 +231,12 @@ class ModelProfile:
         key = getattr(cls, "key", None)
         if not isinstance(key, str) or not key.strip():
             raise ValueError(f"{cls.__name__} must define a non-empty string `key`")
+
+        # Conservative/dynamic profiles (unresolved unknown models, fine-tuned
+        # derivations) are not registered as canonical catalog entries and are exempt
+        # from the duplicate-key guard.
+        if getattr(cls, "resolved", True) is False:
+            return
 
         if key in cls._registry:
             raise ValueError(f"Duplicate model key: {key}")
@@ -391,7 +421,76 @@ class ModelProfile:
                         "encoding": base_profile.encoding,
                     },
                 )
-            raise ValueError(f"Unknown model key {key!r}") from None
+            if cls.strict_unknown_models:
+                raise ValueError(f"Unknown model key {key!r}") from None
+            logger.warning(
+                "Constructing conservative unresolved profile for unknown model key %r; "
+                "no capabilities, modalities, lifecycle, limits, or prices are inferred.",
+                key,
+            )
+            return cls._make_unresolved_profile(key)
+
+    @classmethod
+    def _make_unresolved_profile(cls, key: str) -> type["ModelProfile"]:
+        """Build a conservative profile for an explicit but unrecognized model ID.
+
+        The profile lets the request be attempted without fabricating metadata: it claims
+        no modalities, tools, reasoning, lifecycle, rate limits, or prices. Cost is
+        reported as unknown (``None``) rather than zero, per the catalog pricing policy.
+        """
+
+        def _unresolved_parse_usage(
+            inner_cls: type["ModelProfile"], usage: dict[str, Any]
+        ) -> dict[str, Any]:
+            input_tokens = int(usage.get("prompt_tokens", usage.get("input_tokens", 0)) or 0)
+            parsed: dict[str, Any] = {"input_tokens": input_tokens}
+            output_tokens: int | None = None
+            if "completion_tokens" in usage:
+                output_tokens = int(usage.get("completion_tokens", 0) or 0)
+                parsed["output_tokens"] = output_tokens
+            elif "output_tokens" in usage:
+                output_tokens = int(usage.get("output_tokens", 0) or 0)
+                parsed["output_tokens"] = output_tokens
+            total_tokens = int(usage.get("total_tokens", 0) or 0)
+            if total_tokens <= 0:
+                total_tokens = input_tokens + (output_tokens or 0)
+            parsed["total_tokens"] = total_tokens
+            # Pricing is unknown for unresolved models — never fabricate a zero cost.
+            parsed["input_cost"] = None
+            parsed["output_cost"] = None
+            parsed["total_cost"] = None
+            parsed["cost_status"] = "unknown"
+            return parsed
+
+        dynamic_name = "UnresolvedModel_" + re.sub(r"[^0-9A-Za-z_]", "_", key)
+        return type(
+            dynamic_name,
+            (cls,),
+            {
+                "key": key,
+                "model_name": key,
+                "category": "completions",
+                "context_window": _UNRESOLVED_CONTEXT_WINDOW,
+                "max_output": None,
+                "output_dimensions": None,
+                "usage_costs": {},
+                "rate_limits": {},
+                "pricing_features": {},
+                "reasoning_model": False,
+                "reasoning_efforts": [],
+                "default_reasoning_effort": None,
+                "function_calling_support": False,
+                "token_streaming_support": False,
+                "structured_outputs_support": None,
+                "responses_api_support": None,
+                "vision_input_support": None,
+                "audio_input_support": None,
+                "file_input_support": None,
+                "encoding": "cl100k_base",
+                "resolved": False,
+                "parse_usage": classmethod(_unresolved_parse_usage),
+            },
+        )
 
 
 class GPT5Point2(ModelProfile):
@@ -1808,8 +1907,54 @@ class Gemini3Pro(ModelProfile):
     encoding = "cl100k_base"
 
 
+# --- TEMPORARY (Phase 1 truthfulness guard; superseded in Phase 7) ------------------
+# The Anthropic provider does not yet implement native image/PDF/file transport: such
+# content is degraded rather than sent as native blocks. Until that transport lands,
+# explicitly mark every Anthropic (Claude) model as NOT supporting image/file input so
+# capability discovery matches the implemented behavior instead of leaving the flags as
+# an ambiguous ``None``. Phase 7 will enable these per model once native blocks are wired
+# and round-trip tested. Remove this block at that point.
+for _profile in ModelProfile._registry.values():
+    if str(getattr(_profile, "key", "")).startswith("claude"):
+        if _profile.vision_input_support is None:
+            _profile.vision_input_support = False
+        if _profile.file_input_support is None:
+            _profile.file_input_support = False
+del _profile
+
+
+def warn_if_deprecated(profile: type["ModelProfile"]) -> None:
+    """Emit a lifecycle warning when a user selects a deprecated or retired model.
+
+    TEMPORARY (Phase 1): narrow warning layer based on the existing ``deprecated`` flag
+    plus the explicit ``_RETIRED_MODELS`` denylist. Catalog v2 (Phase 2) replaces this
+    with structured lifecycle status and dates. Intended to be called at user-facing model
+    selection only (not on internal catalog lookups), so it does not spam.
+    """
+    key = getattr(profile, "key", None)
+    if not isinstance(key, str):
+        return
+    replacement = getattr(profile, "replacement", None)
+    if key in _RETIRED_MODELS:
+        replacement_text = repr(replacement) if replacement else "a current model"
+        warnings.warn(
+            f"Model {key!r} was retired on {_RETIRED_MODELS[key]} and may no longer be "
+            f"available from the provider. Use {replacement_text} instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+    elif getattr(profile, "deprecated", False):
+        suffix = f" Use {replacement!r} instead." if replacement else ""
+        warnings.warn(
+            f"Model {key!r} is deprecated.{suffix}",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+
 __all__ = [
     "ModelProfile",
+    "warn_if_deprecated",
     # OpenAI
     "GPT5",
     "GPT5ChatLatest",
