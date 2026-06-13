@@ -18,8 +18,8 @@ class _DummyProvider:
 
 
 def test_provider_configs_use_supported_default_models() -> None:
-    assert OpenAIConfig().default_model == "gpt-5"
-    assert AnthropicConfig().default_model == "claude-opus-4-7"
+    assert OpenAIConfig().default_model == "gpt-5.4-mini"
+    assert AnthropicConfig().default_model == "claude-sonnet-4-6"
     assert GoogleConfig().default_model == "gemini-2.0-flash"
 
 

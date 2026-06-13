@@ -69,7 +69,7 @@ def test_provider_registry_can_filter_by_capability_and_priority() -> None:
 def test_default_provider_registry_exposes_common_providers() -> None:
     registry = get_default_provider_registry()
 
-    assert registry.get("openai").default_model == "gpt-5"
+    assert registry.get("openai").default_model == "gpt-5.4-mini"
     assert registry.get("openai").capabilities.responses_api is True
     assert registry.get("openai").capabilities.background_responses is True
     assert registry.get("openai").capabilities.responses_native_tools is True
