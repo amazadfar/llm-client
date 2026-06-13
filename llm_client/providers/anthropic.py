@@ -459,9 +459,44 @@ class AnthropicProvider(BaseProvider):
     @staticmethod
     def _sanitize_request_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
         sanitized = {key: value for key, value in kwargs.items() if value is not None}
-        sanitized.pop("reasoning_effort", None)
-        sanitized.pop("reasoning", None)
+        # Generic (OpenAI-style) reasoning controls are not silently dropped. Anthropic
+        # does not accept `reasoning`/`reasoning_effort`; honoring them silently would
+        # mislead callers into believing a reasoning request was applied. Reject them
+        # explicitly. Extended thinking is configured through Anthropic's native
+        # `thinking` parameter (typed, translated support lands in a later phase).
+        for control in ("reasoning_effort", "reasoning"):
+            if control in sanitized:
+                raise ValueError(
+                    f"Anthropic does not support the generic '{control}' control. "
+                    "Configure Anthropic extended thinking through the native `thinking` "
+                    "parameter instead. (Automatic translation is not yet available.)"
+                )
         return sanitized
+
+    def _apply_sampling_temperature(
+        self,
+        params: dict[str, Any],
+        temperature: float | None,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Apply temperature in a model-aware way.
+
+        Anthropic extended thinking requires temperature to be unset (or exactly ``1``).
+        When thinking is enabled, an explicit incompatible temperature is rejected and the
+        package-level default temperature is omitted rather than injecting a value the
+        model would reject.
+        """
+        thinking = kwargs.get("thinking")
+        thinking_enabled = isinstance(thinking, dict) and thinking.get("type") == "enabled"
+        if temperature is not None:
+            if thinking_enabled and float(temperature) != 1.0:
+                raise ValueError(
+                    "Anthropic extended thinking requires temperature to be unset or 1; "
+                    f"got temperature={temperature}."
+                )
+            params["temperature"] = temperature
+        elif self.default_temperature is not None and not thinking_enabled:
+            params["temperature"] = self.default_temperature
 
     async def complete(
         self,
@@ -511,10 +546,7 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        if temperature is not None:
-            params["temperature"] = temperature
-        elif self.default_temperature is not None:
-            params["temperature"] = self.default_temperature
+        self._apply_sampling_temperature(params, temperature, kwargs)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -679,10 +711,7 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        if temperature is not None:
-            params["temperature"] = temperature
-        elif self.default_temperature is not None:
-            params["temperature"] = self.default_temperature
+        self._apply_sampling_temperature(params, temperature, kwargs)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
