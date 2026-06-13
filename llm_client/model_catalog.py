@@ -687,7 +687,12 @@ def _projected_flat_costs_from_pricing(pricing: Pricing) -> dict[str, float]:
     for dim in pricing.dimensions:
         if dim.rate is None or dim.region not in (None, "default") or dim.threshold is not None:
             continue
-        per_unit = float(dim.rate) / 1_000_000 if dim.unit == "million_tokens" else float(dim.rate)
+        # Reconstruct per-token cost via Decimal so the float matches the v1
+        # ``float(Decimal(rate)/Decimal(1_000_000))`` representation bit-for-bit.
+        if dim.unit == "million_tokens":
+            per_unit = float(Decimal(str(dim.rate)) / Decimal(1_000_000))
+        else:
+            per_unit = float(dim.rate)
         if dim.mode == "batch":
             if dim.metric in ("input", "output"):
                 flat.setdefault(f"batch_{dim.metric}", per_unit)
@@ -779,7 +784,7 @@ def _metadata_from_v2_model(raw: dict[str, Any]) -> ModelMetadata:
         structured_outputs=bool(tools_raw.get("structured_outputs", False)),
         responses_api=has_responses,
         background_responses=has_responses,
-        responses_native_tools=has_responses and bool(tools_raw.get("provider_native_tools")),
+        responses_native_tools=bool(tools_raw.get("responses_native_tools", has_responses)),
         normalized_output_items=has_responses,
         vision_input="image" in input_mods,
         audio_input="audio" in input_mods,

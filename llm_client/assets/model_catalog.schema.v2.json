@@ -166,6 +166,7 @@
           "properties": {
             "client_tools": {"type": "boolean", "description": "Function/tool calling support."},
             "structured_outputs": {"type": "boolean"},
+            "responses_native_tools": {"type": "boolean", "description": "Supports provider-native (server-side) tools on the Responses endpoint."},
             "provider_native_tools": {"type": "array", "items": {"type": "string"}},
             "server_tools": {"type": "array", "items": {"type": "string"}},
             "version_constraints": {"type": "object", "additionalProperties": {"type": "string"}}
