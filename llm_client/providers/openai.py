@@ -308,8 +308,18 @@ class OpenAIProvider(BaseProvider):
 
         if api_type == "responses":
             params.pop("reasoning_effort", None)
-            params["reasoning"] = {"effort": effort}
+            # Preserve the full reasoning object (e.g. ``summary``,
+            # ``generate_summary``); only normalize the validated ``effort`` rather than
+            # collapsing the object to ``{"effort": ...}`` and losing other valid fields.
+            if has_reasoning and isinstance(params.get("reasoning"), dict):
+                merged = dict(params["reasoning"])
+                merged["effort"] = effort
+                params["reasoning"] = merged
+            else:
+                params["reasoning"] = {"effort": effort}
         elif api_type == "completions":
+            # Chat Completions accepts only the scalar ``reasoning_effort``; the reasoning
+            # object form is not supported by that endpoint.
             params.pop("reasoning", None)
             params["reasoning_effort"] = effort
 
@@ -2795,8 +2805,10 @@ class OpenAIProvider(BaseProvider):
 
         parsed_text_format: type | None = None
         if use_responses_api:
-            if temperature is not None:
-                params["temperature"] = temperature
+            # Unified with the non-stream path: route temperature through
+            # ``_set_temperature`` so GPT-5-family omission rules apply identically to
+            # streaming and non-streaming requests.
+            self._set_temperature(params, temperature)
             if max_tokens is not None:
                 params["max_output_tokens"] = max_tokens
             text_config, parsed_text_format = self._responses_text_config_and_parser(response_format, source_messages)
