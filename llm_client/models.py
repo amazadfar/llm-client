@@ -216,6 +216,10 @@ class ModelProfile:
     # constructed for unknown/unrecognized model IDs set this to ``False`` and expose no
     # inferred capabilities, modalities, lifecycle, limits, or prices.
     resolved: ClassVar[bool] = True
+    # Dynamically generated profiles (unresolved unknown models, fine-tuned derivations,
+    # and catalog-v2 compatibility projections) set this so they are not registered as
+    # canonical catalog entries and are exempt from the duplicate-key guard.
+    _skip_registry: ClassVar[bool] = False
     # Global switch to restore strict behavior (raise on unknown model IDs) instead of
     # constructing a conservative unresolved profile. See ``ModelProfile.get``.
     strict_unknown_models: ClassVar[bool] = False
@@ -233,9 +237,9 @@ class ModelProfile:
             raise ValueError(f"{cls.__name__} must define a non-empty string `key`")
 
         # Conservative/dynamic profiles (unresolved unknown models, fine-tuned
-        # derivations) are not registered as canonical catalog entries and are exempt
-        # from the duplicate-key guard.
-        if getattr(cls, "resolved", True) is False:
+        # derivations, catalog-v2 projections) are not registered as canonical catalog
+        # entries and are exempt from the duplicate-key guard.
+        if getattr(cls, "_skip_registry", False) or getattr(cls, "resolved", True) is False:
             return
 
         if key in cls._registry:
