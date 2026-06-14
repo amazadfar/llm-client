@@ -317,6 +317,7 @@ from .redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
+from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
 from .spec import RequestContext, RequestSpec
 
 # === Telemetry ===
@@ -391,6 +392,8 @@ _STABLE_EXPORTS = [
     # Requests / execution
     "RequestContext",
     "RequestSpec",
+    "OpenAIRequestOptions",
+    "AnthropicRequestOptions",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",

@@ -28,6 +28,7 @@ from typing import Any, TYPE_CHECKING
 
 from .cache_keys import request_cache_key
 from .providers.types import Message
+from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
 from .tools.base import (
     ResponsesBuiltinTool,
     ResponsesCustomTool,
@@ -367,9 +368,16 @@ class RequestSpec:
     include: list[str] | None = None
     prompt_cache_key: str | None = None
     prompt_cache_retention: str | None = None
+    # --- Phase 4: stable shared controls (semantics overlap across providers) ---
+    service_tier: str | None = None  # e.g. standard/flex/priority/scale (OpenAI); standard/priority (Anthropic); "auto"
+    top_p: float | None = None
+    metadata: dict[str, Any] | None = None
+    # --- Phase 4: typed, namespaced provider-only options ---
+    openai_options: OpenAIRequestOptions | None = None
+    anthropic_options: AnthropicRequestOptions | None = None
     extra: dict[str, Any] = field(default_factory=dict)
     stream: bool = False
-    schema_version: int = 2
+    schema_version: int = 3
 
     def to_dict(self) -> dict[str, Any]:
         tools_payload = None
@@ -395,9 +403,49 @@ class RequestSpec:
             "include": list(self.include) if self.include is not None else None,
             "prompt_cache_key": self.prompt_cache_key,
             "prompt_cache_retention": self.prompt_cache_retention,
+            "service_tier": self.service_tier,
+            "top_p": self.top_p,
+            "metadata": dict(self.metadata) if self.metadata is not None else None,
+            "openai_options": self.openai_options.to_dict() if self.openai_options is not None else None,
+            "anthropic_options": self.anthropic_options.to_dict() if self.anthropic_options is not None else None,
             "extra": dict(self.extra),
             "stream": self.stream,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RequestSpec":
+        """Decode a serialized RequestSpec, tolerating prior schema versions.
+
+        Fields added in v3 (service_tier, top_p, metadata, typed options) default to
+        their unset values when decoding a v2 document, so prior serialized requests
+        continue to decode. Tool definitions are passed through in their serialized form.
+        """
+        messages = [
+            m if isinstance(m, Message) else Message.from_dict(m)
+            for m in data.get("messages", [])
+        ]
+        return cls(
+            provider=data["provider"],
+            model=data["model"],
+            messages=messages,
+            tools=data.get("tools"),
+            tool_choice=data.get("tool_choice"),
+            temperature=data.get("temperature"),
+            max_tokens=data.get("max_tokens"),
+            response_format=data.get("response_format"),
+            reasoning_effort=data.get("reasoning_effort"),
+            reasoning=data.get("reasoning"),
+            include=data.get("include"),
+            prompt_cache_key=data.get("prompt_cache_key"),
+            prompt_cache_retention=data.get("prompt_cache_retention"),
+            service_tier=data.get("service_tier"),
+            top_p=data.get("top_p"),
+            metadata=dict(data["metadata"]) if data.get("metadata") is not None else None,
+            openai_options=OpenAIRequestOptions.from_dict(data.get("openai_options")),
+            anthropic_options=AnthropicRequestOptions.from_dict(data.get("anthropic_options")),
+            extra=dict(data.get("extra") or {}),
+            stream=bool(data.get("stream", False)),
+        )
 
     def cache_key(self) -> str:
         return request_cache_key(self)
