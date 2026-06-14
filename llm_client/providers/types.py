@@ -171,6 +171,12 @@ class Usage:
     cache_creation_input_cost: float = 0.0
     total_cost: float = 0.0
 
+    # Phase 5: cost completeness + execution context for honest accounting.
+    cost_status: str = "complete"  # complete | partial | unknown
+    execution_mode: str | None = None  # standard | concurrent | provider_batch
+    requested_service_tier: str | None = None
+    actual_service_tier: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -186,6 +192,10 @@ class Usage:
             "cache_read_input_cost": self.cache_read_input_cost,
             "cache_creation_input_cost": self.cache_creation_input_cost,
             "total_cost": self.total_cost,
+            "cost_status": self.cost_status,
+            "execution_mode": self.execution_mode,
+            "requested_service_tier": self.requested_service_tier,
+            "actual_service_tier": self.actual_service_tier,
         }
 
     @classmethod
@@ -204,6 +214,10 @@ class Usage:
             cache_read_input_cost=data.get("cache_read_input_cost", 0.0),
             cache_creation_input_cost=data.get("cache_creation_input_cost", 0.0),
             total_cost=data.get("total_cost", 0.0),
+            cost_status=data.get("cost_status", "complete"),
+            execution_mode=data.get("execution_mode"),
+            requested_service_tier=data.get("requested_service_tier"),
+            actual_service_tier=data.get("actual_service_tier"),
         )
 
 
