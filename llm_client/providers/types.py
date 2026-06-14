@@ -313,6 +313,12 @@ class CompletionResult:
     status: int = 200
     error: str | None = None
 
+    # Service tier (Phase 4): the tier requested by the caller and the tier the provider
+    # reports actually serving the request. Kept separate (audit O-API-007 / A-API-009);
+    # ``service_tier`` may differ from ``requested_service_tier`` (e.g. "auto").
+    requested_service_tier: str | None = None
+    service_tier: str | None = None
+
     # Original response for debugging
     raw_response: Any | None = field(default=None, repr=False)
     provider_items: list[dict[str, Any]] | None = None
