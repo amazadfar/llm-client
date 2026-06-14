@@ -458,26 +458,56 @@ class AnthropicProvider(BaseProvider):
 
     @staticmethod
     def _sanitize_request_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
-        sanitized = {key: value for key, value in kwargs.items() if value is not None}
-        # Generic (OpenAI-style) reasoning controls are not silently dropped. Anthropic
-        # does not accept `reasoning`/`reasoning_effort`; honoring them silently would
-        # mislead callers into believing a reasoning request was applied. Reject them
-        # explicitly. Extended thinking is configured through Anthropic's native
-        # `thinking` parameter (typed, translated support lands in a later phase).
-        for control in ("reasoning_effort", "reasoning"):
-            if control in sanitized:
-                raise ValueError(
-                    f"Anthropic does not support the generic '{control}' control. "
-                    "Configure Anthropic extended thinking through the native `thinking` "
-                    "parameter instead. (Automatic translation is not yet available.)"
-                )
-        return sanitized
+        # Generic reasoning controls are now consumed as named parameters and translated
+        # (see _resolve_anthropic_effort); only None-filtering of leftover kwargs remains.
+        return {key: value for key, value in kwargs.items() if value is not None}
+
+    def _resolve_anthropic_effort(
+        self,
+        effort: str | None,
+        reasoning_effort: str | None,
+        reasoning: dict[str, Any] | None,
+    ) -> str | None:
+        """Resolve Anthropic ``output_config.effort``, model-aware.
+
+        An explicit Anthropic ``effort`` wins. Otherwise the generic (OpenAI-style)
+        ``reasoning_effort`` -- or the ``effort`` inside a generic ``reasoning`` object --
+        is translated to Anthropic's effort. The candidate is validated against the
+        model's supported efforts, so an unsupported value (or an effort on a model that
+        has none) raises a clear error instead of being silently dropped (audit A-API-002
+        / A-API-003).
+        """
+        candidate = effort
+        if candidate is None and reasoning_effort is not None:
+            candidate = reasoning_effort
+        if candidate is None and isinstance(reasoning, dict) and reasoning.get("effort"):
+            candidate = reasoning.get("effort")
+        if candidate is None:
+            return None
+        supported = list(getattr(self._model, "reasoning_efforts", []) or [])
+        if not supported:
+            raise ValueError(
+                f"Model {self.model_name!r} does not support a reasoning effort control."
+            )
+        if candidate not in supported:
+            raise ValueError(
+                f"Effort {candidate!r} is not supported by {self.model_name!r}; "
+                f"choose from {supported}."
+            )
+        return candidate
+
+    def _validate_anthropic_speed(self, speed: str) -> None:
+        """Fast mode (``speed='fast'``) is only valid on Opus 4.6 (audit A-API-010)."""
+        if speed == "fast" and "opus-4-6" not in str(getattr(self._model, "key", "")):
+            raise ValueError(
+                f"speed='fast' is only supported on Claude Opus 4.6, not {self.model_name!r}."
+            )
 
     def _apply_sampling_temperature(
         self,
         params: dict[str, Any],
         temperature: float | None,
-        kwargs: dict[str, Any],
+        thinking: dict[str, Any] | None = None,
     ) -> None:
         """Apply temperature in a model-aware way.
 
@@ -486,7 +516,6 @@ class AnthropicProvider(BaseProvider):
         package-level default temperature is omitted rather than injecting a value the
         model would reject.
         """
-        thinking = kwargs.get("thinking")
         thinking_enabled = isinstance(thinking, dict) and thinking.get("type") == "enabled"
         if temperature is not None:
             if thinking_enabled and float(temperature) != 1.0:
@@ -498,6 +527,45 @@ class AnthropicProvider(BaseProvider):
         elif self.default_temperature is not None and not thinking_enabled:
             params["temperature"] = self.default_temperature
 
+    def _apply_anthropic_request_controls(
+        self,
+        params: dict[str, Any],
+        *,
+        temperature: float | None,
+        thinking: dict[str, Any] | None,
+        effort: str | None,
+        reasoning_effort: str | None,
+        reasoning: dict[str, Any] | None,
+        speed: str | None,
+        service_tier: str | None,
+        top_p: float | None,
+        metadata: dict[str, Any] | None,
+        container: str | None,
+    ) -> None:
+        """Apply Phase 4 request controls (shared and Anthropic-specific) to ``params``.
+
+        Shared by complete() and stream() so both paths validate and translate identically.
+        """
+        resolved_effort = self._resolve_anthropic_effort(effort, reasoning_effort, reasoning)
+        self._apply_sampling_temperature(params, temperature, thinking)
+        if thinking is not None:
+            params["thinking"] = thinking
+        if resolved_effort is not None:
+            output_config = dict(params.get("output_config") or {})
+            output_config["effort"] = resolved_effort
+            params["output_config"] = output_config
+        if speed is not None:
+            self._validate_anthropic_speed(speed)
+            params["speed"] = speed
+        if service_tier is not None:
+            params["service_tier"] = service_tier
+        if top_p is not None:
+            params["top_p"] = top_p
+        if metadata is not None:
+            params["metadata"] = metadata
+        if container is not None:
+            params["container"] = container
+
     async def complete(
         self,
         messages: MessageInput,
@@ -507,6 +575,15 @@ class AnthropicProvider(BaseProvider):
         temperature: float | None = None,
         max_tokens: int | None = None,
         response_format: str | dict[str, Any] | type | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        thinking: dict[str, Any] | None = None,
+        effort: str | None = None,
+        speed: str | None = None,
+        container: str | None = None,
+        reasoning_effort: str | None = None,
+        reasoning: dict[str, Any] | None = None,
         cache_response: bool = False,
         cache_collection: str | None = None,
         rewrite_cache: bool = False,
@@ -546,7 +623,19 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        self._apply_sampling_temperature(params, temperature, kwargs)
+        self._apply_anthropic_request_controls(
+            params,
+            temperature=temperature,
+            thinking=thinking,
+            effort=effort,
+            reasoning_effort=reasoning_effort,
+            reasoning=reasoning,
+            speed=speed,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            container=container,
+        )
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -673,6 +762,15 @@ class AnthropicProvider(BaseProvider):
         temperature: float | None = None,
         max_tokens: int | None = None,
         response_format: str | dict[str, Any] | type | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        thinking: dict[str, Any] | None = None,
+        effort: str | None = None,
+        speed: str | None = None,
+        container: str | None = None,
+        reasoning_effort: str | None = None,
+        reasoning: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamEvent]:
         """
@@ -711,7 +809,19 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        self._apply_sampling_temperature(params, temperature, kwargs)
+        self._apply_anthropic_request_controls(
+            params,
+            temperature=temperature,
+            thinking=thinking,
+            effort=effort,
+            reasoning_effort=reasoning_effort,
+            reasoning=reasoning,
+            speed=speed,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            container=container,
+        )
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
