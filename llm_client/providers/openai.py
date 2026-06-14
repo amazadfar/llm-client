@@ -2085,6 +2085,35 @@ class OpenAIProvider(BaseProvider):
         params["temperature"] = temperature
 
     @staticmethod
+    def _apply_openai_request_controls(
+        params: dict[str, Any],
+        *,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        verbosity: str | None = None,
+        safety_identifier: str | None = None,
+        store: bool | None = None,
+        background: bool | None = None,
+    ) -> None:
+        """Inject Phase 4 shared/typed OpenAI request controls into the request params.
+
+        Applied identically on the complete and stream paths. Pre-existing values (e.g.
+        from ``extra``) are not overwritten.
+        """
+        for key, value in (
+            ("service_tier", service_tier),
+            ("top_p", top_p),
+            ("metadata", metadata),
+            ("verbosity", verbosity),
+            ("safety_identifier", safety_identifier),
+            ("store", store),
+            ("background", background),
+        ):
+            if value is not None and key not in params:
+                params[key] = value
+
+    @staticmethod
     def _normalize_realtime_connection_model(model_name: str | None) -> str | None:
         if model_name is None:
             return None
@@ -2110,6 +2139,13 @@ class OpenAIProvider(BaseProvider):
         include: list[str] | None = None,
         prompt_cache_key: str | None = None,
         prompt_cache_retention: str | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        verbosity: str | None = None,
+        safety_identifier: str | None = None,
+        store: bool | None = None,
+        background: bool | None = None,
         cache_response: bool = False,
         cache_collection: str | None = None,
         rewrite_cache: bool = False,
@@ -2220,6 +2256,16 @@ class OpenAIProvider(BaseProvider):
             params["prompt_cache_key"] = prompt_cache_key
         if prompt_cache_retention is not None:
             params["prompt_cache_retention"] = prompt_cache_retention
+        self._apply_openai_request_controls(
+            params,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            verbosity=verbosity,
+            safety_identifier=safety_identifier,
+            store=store,
+            background=background,
+        )
         params = self._check_reasoning_params(params, "responses" if use_responses_api else "completions")
 
         # Add any extra kwargs
@@ -2729,6 +2775,13 @@ class OpenAIProvider(BaseProvider):
         include: list[str] | None = None,
         prompt_cache_key: str | None = None,
         prompt_cache_retention: str | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        verbosity: str | None = None,
+        safety_identifier: str | None = None,
+        store: bool | None = None,
+        background: bool | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamEvent]:
         """
@@ -2834,6 +2887,16 @@ class OpenAIProvider(BaseProvider):
             params["prompt_cache_key"] = prompt_cache_key
         if prompt_cache_retention is not None:
             params["prompt_cache_retention"] = prompt_cache_retention
+        self._apply_openai_request_controls(
+            params,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            verbosity=verbosity,
+            safety_identifier=safety_identifier,
+            store=store,
+            background=background,
+        )
         params = self._check_reasoning_params(params, "responses" if use_responses_api else "completions")
 
         params.update(kwargs)
