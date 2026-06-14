@@ -24,6 +24,7 @@ import numpy as np
 import openai
 from openai import AsyncOpenAI
 
+from ..batch_api import BatchJob, BatchRequestItem, BatchResultItem, normalize_batch_status
 from ..cache import CacheSettings, build_cache_core
 from ..cache.serializers import cache_dict_to_result, result_to_cache_dict
 from ..content import (
@@ -264,6 +265,132 @@ class OpenAIProvider(BaseProvider):
     async def warm_cache(self) -> None:
         """Pre-warm the cache (for backends that support it)."""
         await self.cache.warm()
+
+    # --- Provider Batch API: OpenAI Batch (Phase 6) ---------------------------------
+    # File-backed JSONL batch jobs at the 50% batch rate. Distinct from local
+    # concurrency (ExecutionEngine.concurrent_complete), which bills at standard rates.
+
+    _BATCH_ENDPOINT_URLS = {
+        "chat_completions": "/v1/chat/completions",
+        "responses": "/v1/responses",
+        "embeddings": "/v1/embeddings",
+    }
+
+    def _batch_job_from_openai(self, batch: Any) -> BatchJob:
+        raw_status = getattr(batch, "status", None)
+        counts_obj = getattr(batch, "request_counts", None)
+        counts: dict[str, int] = {}
+        if counts_obj is not None:
+            for name in ("total", "completed", "failed"):
+                value = getattr(counts_obj, name, None)
+                if value is not None:
+                    counts[name] = int(value)
+        return BatchJob(
+            id=getattr(batch, "id", ""),
+            provider="openai",
+            status=normalize_batch_status("openai", raw_status),
+            raw_status=raw_status,
+            endpoint=getattr(batch, "endpoint", None),
+            request_counts=counts,
+            created_at=getattr(batch, "created_at", None),
+            expires_at=getattr(batch, "expires_at", None),
+            output_file_id=getattr(batch, "output_file_id", None),
+            raw=batch,
+        )
+
+    async def create_batch(
+        self,
+        requests: list[BatchRequestItem],
+        *,
+        endpoint: str = "responses",
+        completion_window: str = "24h",
+        metadata: dict[str, Any] | None = None,
+    ) -> BatchJob:
+        """Create an OpenAI Batch by uploading a JSONL input file and starting the job."""
+        url = self._BATCH_ENDPOINT_URLS.get(endpoint, endpoint)
+        lines = [
+            json.dumps({
+                "custom_id": item.custom_id,
+                "method": "POST",
+                "url": url,
+                "body": item.params,
+            })
+            for item in requests
+        ]
+        jsonl = ("\n".join(lines) + "\n").encode("utf-8")
+        uploaded = await self.client.files.create(
+            file=("batch_input.jsonl", jsonl, "application/jsonl"),
+            purpose="batch",
+        )
+        batch = await self.client.batches.create(
+            input_file_id=uploaded.id,
+            endpoint=url,
+            completion_window=completion_window,
+            metadata=metadata,
+        )
+        return self._batch_job_from_openai(batch)
+
+    async def retrieve_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.batches.retrieve(batch_id)
+        return self._batch_job_from_openai(batch)
+
+    async def list_batches(self, *, limit: int = 20) -> list[BatchJob]:
+        page = await self.client.batches.list(limit=limit)
+        items = getattr(page, "data", None) or []
+        return [self._batch_job_from_openai(batch) for batch in items]
+
+    async def cancel_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.batches.cancel(batch_id)
+        return self._batch_job_from_openai(batch)
+
+    async def batch_results(self, batch_id: str) -> list[BatchResultItem]:
+        """Download and parse the JSONL output file for a completed batch."""
+        batch = await self.client.batches.retrieve(batch_id)
+        output_file_id = getattr(batch, "output_file_id", None)
+        if not output_file_id:
+            return []
+        content = await self.client.files.content(output_file_id)
+        text = await self._read_file_content(content)
+        items: list[BatchResultItem] = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            items.append(self._batch_result_item_from_openai(json.loads(line)))
+        return items
+
+    @staticmethod
+    async def _read_file_content(content: Any) -> str:
+        for attr in ("aread", "read"):
+            reader = getattr(content, attr, None)
+            if reader is not None:
+                data = reader()
+                if inspect.isawaitable(data):
+                    data = await data
+                return data.decode("utf-8") if isinstance(data, bytes) else str(data)
+        text = getattr(content, "text", None)
+        if text is not None:
+            return text
+        return str(content)
+
+    @staticmethod
+    def _batch_result_item_from_openai(entry: dict[str, Any]) -> BatchResultItem:
+        custom_id = entry.get("custom_id", "")
+        error = entry.get("error")
+        if error:
+            return BatchResultItem(custom_id=custom_id, status="errored", error=dict(error), raw=entry)
+        response = entry.get("response") or {}
+        status_code = response.get("status_code")
+        body = response.get("body") or {}
+        if status_code and int(status_code) >= 400:
+            return BatchResultItem(custom_id=custom_id, status="errored", error={"body": body}, raw=entry)
+        return BatchResultItem(
+            custom_id=custom_id,
+            status="succeeded",
+            content=body,
+            usage=body.get("usage") if isinstance(body, dict) else None,
+            raw=entry,
+        )
 
     async def close(self) -> None:
         """Close provider resources."""

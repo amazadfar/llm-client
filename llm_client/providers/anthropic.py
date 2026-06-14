@@ -39,6 +39,7 @@ from ..errors import (
     normalize_exception,
     normalize_provider_failure,
 )
+from ..batch_api import BatchJob, BatchRequestItem, BatchResultItem, normalize_batch_status
 from ..hashing import cache_key as compute_cache_key
 from ..rate_limit import Limiter
 from ..tools.base import ToolDefinition, ensure_function_tools_only
@@ -1018,6 +1019,82 @@ class AnthropicProvider(BaseProvider):
             "Anthropic does not provide an embeddings API. "
             "Consider using OpenAI's text-embedding models or a dedicated embedding service."
         )
+
+    # --- Provider Batch API: Anthropic Message Batches (Phase 6) ---------------------
+    # Durable, discounted batch jobs. Distinct from local concurrency
+    # (ExecutionEngine.concurrent_complete), which bills at standard rates.
+
+    def _batch_job_from_anthropic(self, batch: Any) -> BatchJob:
+        raw_status = getattr(batch, "processing_status", None)
+        counts_obj = getattr(batch, "request_counts", None)
+        counts: dict[str, int] = {}
+        if counts_obj is not None:
+            for name in ("processing", "succeeded", "errored", "canceled", "expired"):
+                value = getattr(counts_obj, name, None)
+                if value is not None:
+                    counts[name] = int(value)
+        return BatchJob(
+            id=getattr(batch, "id", ""),
+            provider="anthropic",
+            status=normalize_batch_status("anthropic", raw_status),
+            raw_status=raw_status,
+            endpoint="messages",
+            request_counts=counts,
+            created_at=getattr(batch, "created_at", None),
+            expires_at=getattr(batch, "expires_at", None),
+            raw=batch,
+        )
+
+    async def create_message_batch(self, requests: list[BatchRequestItem]) -> BatchJob:
+        """Create an Anthropic Message Batch from request items."""
+        payload = [{"custom_id": item.custom_id, "params": dict(item.params)} for item in requests]
+        batch = await self.client.messages.batches.create(requests=payload)
+        return self._batch_job_from_anthropic(batch)
+
+    async def retrieve_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.messages.batches.retrieve(batch_id)
+        return self._batch_job_from_anthropic(batch)
+
+    async def list_batches(self, *, limit: int = 20) -> list[BatchJob]:
+        page = await self.client.messages.batches.list(limit=limit)
+        items = getattr(page, "data", None) or []
+        return [self._batch_job_from_anthropic(batch) for batch in items]
+
+    async def cancel_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.messages.batches.cancel(batch_id)
+        return self._batch_job_from_anthropic(batch)
+
+    async def delete_batch(self, batch_id: str) -> None:
+        await self.client.messages.batches.delete(batch_id)
+
+    async def batch_results(self, batch_id: str) -> list[BatchResultItem]:
+        """Retrieve per-item results, preserving custom_ids and per-item errors."""
+        results = await self.client.messages.batches.results(batch_id)
+        items: list[BatchResultItem] = []
+        if hasattr(results, "__aiter__"):
+            async for entry in results:
+                items.append(self._batch_result_item_from_anthropic(entry))
+        else:
+            for entry in results:
+                items.append(self._batch_result_item_from_anthropic(entry))
+        return items
+
+    @staticmethod
+    def _batch_result_item_from_anthropic(entry: Any) -> BatchResultItem:
+        custom_id = getattr(entry, "custom_id", "")
+        result = getattr(entry, "result", None)
+        result_type = getattr(result, "type", None)
+        if result_type == "succeeded":
+            message = getattr(result, "message", None)
+            content = getattr(message, "content", None)
+            usage_obj = getattr(message, "usage", None)
+            usage = usage_obj.to_dict() if hasattr(usage_obj, "to_dict") else None
+            return BatchResultItem(custom_id=custom_id, status="succeeded", content=content, usage=usage, raw=entry)
+        if result_type == "errored":
+            error = getattr(result, "error", None)
+            error_dict = error.to_dict() if hasattr(error, "to_dict") else {"raw": str(error)}
+            return BatchResultItem(custom_id=custom_id, status="errored", error=error_dict, raw=entry)
+        return BatchResultItem(custom_id=custom_id, status=str(result_type or "unknown"), raw=entry)
 
     async def close(self) -> None:
         """
