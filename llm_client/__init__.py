@@ -317,6 +317,7 @@ from .redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
+from .pricing import ResolvedCost, compute_model_cost, resolve_cost
 from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
 from .spec import RequestContext, RequestSpec
 
@@ -394,6 +395,9 @@ _STABLE_EXPORTS = [
     "RequestSpec",
     "OpenAIRequestOptions",
     "AnthropicRequestOptions",
+    "ResolvedCost",
+    "resolve_cost",
+    "compute_model_cost",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",
