@@ -317,6 +317,7 @@ from .redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
+from .batch_api import BatchJob, BatchRequestItem, BatchResultItem
 from .pricing import ResolvedCost, compute_model_cost, resolve_cost
 from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
 from .spec import RequestContext, RequestSpec
@@ -398,6 +399,9 @@ _STABLE_EXPORTS = [
     "ResolvedCost",
     "resolve_cost",
     "compute_model_cost",
+    "BatchJob",
+    "BatchRequestItem",
+    "BatchResultItem",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",
