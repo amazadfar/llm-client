@@ -43,7 +43,7 @@ from ..batch_api import BatchJob, BatchRequestItem, BatchResultItem, normalize_b
 from ..hashing import cache_key as compute_cache_key
 from ..rate_limit import Limiter
 from ..resources import FileObject, ModelInfo, ResourcePage
-from ..tools.base import ToolDefinition, ensure_function_tools_only
+from ..tools.base import AnthropicServerTool, ToolDefinition, ensure_function_tools_only
 from .base import BaseProvider
 from .types import (
     CompletionResult,
@@ -325,19 +325,30 @@ class AnthropicProvider(BaseProvider):
     def _convert_tools_for_anthropic(
         tools: list[ToolDefinition] | None,
     ) -> list[dict[str, Any]] | None:
-        """Convert our Tool format to Anthropic's format."""
-        function_tools = ensure_function_tools_only(tools, provider="anthropic")
-        if not function_tools:
+        """Convert tools to Anthropic's format.
+
+        Executable function tools render to ``{name, description, input_schema}``; native
+        :class:`AnthropicServerTool` descriptors (web_search, code_execution, ...) render to
+        their versioned server-tool dict. OpenAI-native descriptors are rejected.
+        """
+        if not tools:
             return None
 
-        return [
+        server_tools = [tool for tool in tools if isinstance(tool, AnthropicServerTool)]
+        other_tools = [tool for tool in tools if not isinstance(tool, AnthropicServerTool)]
+
+        converted: list[dict[str, Any]] = []
+        function_tools = ensure_function_tools_only(other_tools, provider="anthropic") or []
+        converted.extend(
             {
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.parameters,
             }
             for tool in function_tools
-        ]
+        )
+        converted.extend(tool.to_dict() for tool in server_tools)
+        return converted or None
 
     @staticmethod
     def _extract_tool_calls_from_response(
@@ -378,6 +389,89 @@ class AnthropicProvider(BaseProvider):
 
         text_content = "\n".join(text_parts) if text_parts else None
         return text_content, tool_calls if tool_calls else None
+
+    @staticmethod
+    def _anthropic_block_to_plain(block: Any) -> Any:
+        """Convert an Anthropic SDK content block (or dict) to a plain JSON-able dict."""
+        if isinstance(block, dict):
+            return dict(block)
+        if hasattr(block, "to_dict"):
+            return dict(block.to_dict())
+        if hasattr(block, "model_dump"):
+            return dict(block.model_dump())
+        return {"type": getattr(block, "type", None)}
+
+    # Anthropic server/native tool result block types preserved verbatim in provider_items.
+    _SERVER_TOOL_BLOCK_TYPES = frozenset({
+        "server_tool_use",
+        "web_search_tool_result",
+        "web_fetch_tool_result",
+        "code_execution_tool_result",
+        "bash_code_execution_tool_result",
+        "mcp_tool_use",
+        "mcp_tool_result",
+    })
+
+    def _parse_anthropic_response(self, response: Any) -> dict[str, Any]:
+        """Parse a full Anthropic response, preserving thinking, citations, server tools.
+
+        Returns a dict with text/tool_calls plus lossless rich data: ``reasoning`` (joined
+        thinking text), ``refusal``, ``provider_items`` (signed/redacted thinking, cited
+        text, server-tool blocks), and ``stop_details``.
+        """
+        text_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls: list[ToolCall] = []
+        provider_items: list[dict[str, Any]] = []
+
+        def _attr(block: Any, name: str, default: Any = None) -> Any:
+            if isinstance(block, dict):
+                return block.get(name, default)
+            return getattr(block, name, default)
+
+        for block in getattr(response, "content", None) or []:
+            block_type = _attr(block, "type")
+            if block_type == "text":
+                text = _attr(block, "text", "") or ""
+                text_parts.append(text)
+                citations = _attr(block, "citations")
+                if citations:
+                    provider_items.append(self._anthropic_block_to_plain(block))
+            elif block_type == "thinking":
+                thinking = _attr(block, "thinking", "") or ""
+                reasoning_parts.append(thinking)
+                provider_items.append(
+                    {"type": "thinking", "thinking": thinking, "signature": _attr(block, "signature")}
+                )
+            elif block_type == "redacted_thinking":
+                provider_items.append({"type": "redacted_thinking", "data": _attr(block, "data")})
+            elif block_type == "tool_use":
+                tool_input = _attr(block, "input", {})
+                tool_calls.append(
+                    ToolCall(
+                        id=_attr(block, "id", "") or "",
+                        name=_attr(block, "name", "") or "",
+                        arguments=json.dumps(tool_input) if tool_input else "{}",
+                    )
+                )
+            elif block_type in self._SERVER_TOOL_BLOCK_TYPES:
+                provider_items.append(self._anthropic_block_to_plain(block))
+
+        stop_reason = getattr(response, "stop_reason", None)
+        stop_details_obj = getattr(response, "stop_details", None)
+        stop_details = self._anthropic_block_to_plain(stop_details_obj) if stop_details_obj is not None else None
+        refusal = None
+        if stop_reason == "refusal":
+            refusal = "\n".join(text_parts) if text_parts else "Request declined by the model."
+
+        return {
+            "content": "\n".join(text_parts) if text_parts else None,
+            "tool_calls": tool_calls or None,
+            "reasoning": "\n".join(p for p in reasoning_parts if p) or None,
+            "refusal": refusal,
+            "provider_items": provider_items or None,
+            "stop_details": stop_details,
+        }
 
     @staticmethod
     def _anthropic_usage_to_dict(usage: Any) -> dict[str, Any]:
@@ -614,6 +708,38 @@ class AnthropicProvider(BaseProvider):
         if container is not None:
             params["container"] = container
 
+    @staticmethod
+    def _resolve_output_format(response_format: str | dict[str, Any] | type | None) -> dict[str, Any] | None:
+        """Translate a response_format request into an Anthropic ``output_config.format`` spec.
+
+        Kept entirely separate from tool input schemas (A-API checklist): structured outputs
+        constrain the *response*, not tool parameters.
+        """
+        if response_format is None:
+            return None
+        if isinstance(response_format, str):
+            return {"type": "json_object"} if response_format in {"json", "json_object"} else None
+        if isinstance(response_format, dict):
+            if response_format.get("type") in {"json_schema", "json_object"}:
+                return dict(response_format)
+            schema = response_format.get("schema") or response_format.get("json_schema")
+            if schema is not None:
+                return {"type": "json_schema", "schema": dict(schema)}
+            if response_format.get("type") == "object" or "properties" in response_format:
+                return {"type": "json_schema", "schema": dict(response_format)}
+            return dict(response_format)
+        schema_fn = getattr(response_format, "model_json_schema", None)
+        if callable(schema_fn):
+            return {"type": "json_schema", "schema": schema_fn()}
+        return None
+
+    def _apply_output_format(self, params: dict[str, Any], response_format: Any) -> None:
+        output_format = self._resolve_output_format(response_format)
+        if output_format is not None:
+            output_config = dict(params.get("output_config") or {})
+            output_config["format"] = output_format
+            params["output_config"] = output_config
+
     async def complete(
         self,
         messages: MessageInput,
@@ -684,6 +810,7 @@ class AnthropicProvider(BaseProvider):
             metadata=metadata,
             container=container,
         )
+        self._apply_output_format(params, response_format)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -746,8 +873,9 @@ class AnthropicProvider(BaseProvider):
             try:
                 response = await self.client.messages.create(**params)
 
-                # Extract content and tool calls
-                text_content, tool_calls = self._extract_tool_calls_from_response(response.content)
+                # Parse the full response: text, tool calls, and rich blocks (thinking,
+                # redacted thinking, citations, server-tool results, refusal, stop details).
+                parsed = self._parse_anthropic_response(response)
 
                 # Parse usage
                 usage = self._parse_anthropic_usage(
@@ -760,9 +888,13 @@ class AnthropicProvider(BaseProvider):
                 limit_ctx.output_tokens = usage.output_tokens
 
                 result = CompletionResult(
-                    content=text_content,
-                    tool_calls=tool_calls,
+                    content=parsed["content"],
+                    tool_calls=parsed["tool_calls"],
                     usage=usage,
+                    reasoning=parsed["reasoning"],
+                    refusal=parsed["refusal"],
+                    provider_items=parsed["provider_items"],
+                    stop_details=parsed["stop_details"],
                     model=self.model_name,
                     finish_reason=response.stop_reason,
                     status=200,
@@ -871,6 +1003,7 @@ class AnthropicProvider(BaseProvider):
             metadata=metadata,
             container=container,
         )
+        self._apply_output_format(params, response_format)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -1005,6 +1138,16 @@ class AnthropicProvider(BaseProvider):
                                     cache_creation_ttl=cache_creation_ttl,
                                 )
 
+                    # Parse the assembled message for lossless rich blocks (thinking,
+                    # redacted thinking, citations, server-tool results, refusal, stop
+                    # details). Falls back to the streamed buffers if unavailable.
+                    rich: dict[str, Any] = {}
+                    try:
+                        final_message = await stream.get_final_message()
+                        rich = self._parse_anthropic_response(final_message)
+                    except Exception:
+                        rich = {}
+
                 # Build final tool calls list
                 tool_calls = None
                 if tool_calls_buffer:
@@ -1023,9 +1166,13 @@ class AnthropicProvider(BaseProvider):
 
                 # Emit final result
                 final_result = CompletionResult(
-                    content=content_buffer if content_buffer else None,
-                    tool_calls=tool_calls,
+                    content=rich.get("content") or (content_buffer if content_buffer else None),
+                    tool_calls=rich.get("tool_calls") or tool_calls,
                     usage=usage,
+                    reasoning=rich.get("reasoning"),
+                    refusal=rich.get("refusal"),
+                    provider_items=rich.get("provider_items"),
+                    stop_details=rich.get("stop_details"),
                     model=self.model_name,
                     finish_reason=finish_reason,
                     status=200,
