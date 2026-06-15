@@ -1911,20 +1911,33 @@ class Gemini3Pro(ModelProfile):
     encoding = "cl100k_base"
 
 
-# --- TEMPORARY (Phase 1 truthfulness guard; superseded in Phase 7) ------------------
-# The Anthropic provider does not yet implement native image/PDF/file transport: such
-# content is degraded rather than sent as native blocks. Until that transport lands,
-# explicitly mark every Anthropic (Claude) model as NOT supporting image/file input so
-# capability discovery matches the implemented behavior instead of leaving the flags as
-# an ambiguous ``None``. Phase 7 will enable these per model once native blocks are wired
-# and round-trip tested. Remove this block at that point.
+# --- Anthropic vision/file capability activation (Phase 7) ---------------------------
+# Native image/PDF/file transport now lands as Anthropic image/document blocks
+# (content.content_blocks_to_anthropic_content). Activate per-model image (vision) and
+# document (file) input truthfully, by source-confirmed family:
+#   * Claude 3.5 Haiku is text-only (no image, no document).
+#   * The Claude 3 family (3 Opus/Sonnet/Haiku) accepts images but not PDFs/documents.
+#   * Everything newer (3.5 Sonnet, 3.7 Sonnet, the 4.x families, Fable/Mythos 5) accepts
+#     both images and documents.
+# Only ambiguous (``None``) flags are set, so explicit per-profile overrides win.
+def _anthropic_vision_file_support(key: str) -> tuple[bool, bool]:
+    if key.startswith("claude-3-5-haiku"):
+        return (False, False)
+    if key in {"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}:
+        return (True, False)
+    return (True, True)
+
+
 for _profile in ModelProfile._registry.values():
-    if str(getattr(_profile, "key", "")).startswith("claude"):
-        if _profile.vision_input_support is None:
-            _profile.vision_input_support = False
-        if _profile.file_input_support is None:
-            _profile.file_input_support = False
-del _profile
+    _key = str(getattr(_profile, "key", ""))
+    if not _key.startswith("claude"):
+        continue
+    _vision, _file = _anthropic_vision_file_support(_key)
+    if _profile.vision_input_support is None:
+        _profile.vision_input_support = _vision
+    if _profile.file_input_support is None:
+        _profile.file_input_support = _file
+del _profile, _key, _vision, _file
 
 
 def warn_if_deprecated(profile: type["ModelProfile"]) -> None:

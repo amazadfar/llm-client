@@ -71,13 +71,32 @@ def _output_modalities(category: str) -> list[str]:
     }.get(category, [])
 
 
+# Source-confirmed Anthropic image/document input support by family (Phase 7). The v1
+# source carried these as False under the temporary Phase 1 truthfulness guard; with native
+# image/document transport now implemented, re-derive truthfully here so the catalog matches.
+_ANTHROPIC_VISION_ONLY_KEYS = {"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}
+
+
 def _input_modalities(v1: dict[str, Any]) -> list[str]:
+    provider = str(v1.get("provider") or "").strip().lower()
+    category = str(v1.get("category") or "").strip().lower()
+    key = str(v1.get("key") or "")
+    vision = bool(v1.get("vision_input"))
+    audio = bool(v1.get("audio_input"))
+    file = bool(v1.get("file_input"))
+    if provider == "anthropic" and category == "completions":
+        if key.startswith("claude-3-5-haiku"):
+            vision, file = False, False
+        elif key in _ANTHROPIC_VISION_ONLY_KEYS:
+            vision, file = True, False
+        else:
+            vision, file = True, True
     mods = ["text"]
-    if v1.get("vision_input"):
+    if vision:
         mods.append("image")
-    if v1.get("audio_input"):
+    if audio:
         mods.append("audio")
-    if v1.get("file_input"):
+    if file:
         mods.append("file")
     return mods
 
