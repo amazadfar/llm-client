@@ -6,10 +6,10 @@ cookbook examples.
 
 Runnable examples:
 
-- [01_one_shot_completion.py](/home/namiral/Projects/Packages/llm-client-v1/examples/01_one_shot_completion.py)
-- [02_streaming.py](/home/namiral/Projects/Packages/llm-client-v1/examples/02_streaming.py)
-- [03_embeddings.py](/home/namiral/Projects/Packages/llm-client-v1/examples/03_embeddings.py)
-- [06_provider_registry_and_routing.py](/home/namiral/Projects/Packages/llm-client-v1/examples/06_provider_registry_and_routing.py)
+- [01_one_shot_completion.py](../examples/01_one_shot_completion.py)
+- [02_streaming.py](../examples/02_streaming.py)
+- [03_embeddings.py](../examples/03_embeddings.py)
+- [06_provider_registry_and_routing.py](../examples/06_provider_registry_and_routing.py)
 
 ## Stable imports
 
@@ -328,7 +328,7 @@ addition to the broader completion/tool/streaming booleans:
 - `normalized_output_items`
 
 The runnable reference is
-[06_provider_registry_and_routing.py](/home/namiral/Projects/Packages/llm-client-v1/examples/06_provider_registry_and_routing.py).
+[06_provider_registry_and_routing.py](../examples/06_provider_registry_and_routing.py).
 
 ## Practical recommendation
 

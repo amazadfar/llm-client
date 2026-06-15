@@ -4,9 +4,9 @@ This is the practical "how do I build with this package?" guide.
 
 Use it together with:
 
-- [llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md)
-- [llm-client-usage-and-capabilities-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-usage-and-capabilities-guide.md)
-- [examples/README.md](/home/namiral/Projects/Packages/llm-client-v1/examples/README.md)
+- [llm-client-package-api-guide.md](llm-client-package-api-guide.md)
+- [llm-client-usage-and-capabilities-guide.md](llm-client-usage-and-capabilities-guide.md)
+- [examples/README.md](../examples/README.md)
 
 The root README is the concise package overview. The package API guide and
 usage guide are the broad references. This guide is the "show me how to do the
@@ -260,7 +260,7 @@ Important `FileBlock` rules:
 
 See:
 
-- [35_file_block_transport.py](/home/namiral/Projects/Packages/llm-client-v1/examples/35_file_block_transport.py)
+- [35_file_block_transport.py](../examples/35_file_block_transport.py)
 
 ## 10. Turn On Caching
 
@@ -563,8 +563,8 @@ depending on repo-local wrapper layers.
 
 If you are new to the package:
 
-1. [llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md)
+1. [llm-client-package-api-guide.md](llm-client-package-api-guide.md)
 2. this guide
-3. [llm-client-usage-and-capabilities-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-usage-and-capabilities-guide.md)
-4. [llm-client-examples-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-examples-guide.md)
+3. [llm-client-usage-and-capabilities-guide.md](llm-client-usage-and-capabilities-guide.md)
+4. [llm-client-examples-guide.md](llm-client-examples-guide.md)
 5. the cookbook scripts in `examples/`

@@ -1,7 +1,7 @@
 # llm-client Examples Guide
 
 This guide explains how to use the cookbook under
-[examples/README.md](/home/namiral/Projects/Packages/llm-client-v1/examples/README.md)
+[examples/README.md](../examples/README.md)
 as a package adoption surface.
 
 ## What The Cookbook Is For
@@ -70,6 +70,12 @@ Optional infrastructure:
 - `LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH` and optionally
   `LLM_CLIENT_EXAMPLE_FILE_PURPOSE` / `LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE`
   for the generic OpenAI Files API example
+- `LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL` and optionally
+  `LLM_CLIENT_EXAMPLE_ANTHROPIC_EFFORT` for Anthropic current-feature examples
+- `LLM_CLIENT_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH` and optionally
+  `LLM_CLIENT_EXAMPLE_KEEP_ANTHROPIC_FILE=0|1` for the Anthropic Files API path
+- `LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH=1` to create real OpenAI Batch and
+  Anthropic Message Batches jobs; example `62` is dry-run by default
 
 ## Example Categories
 
@@ -89,7 +95,7 @@ These demonstrate stable package capabilities directly:
 - `10` context and memory planning
 - `11` observability and redaction
 - `12` benchmarks
-- `13` batch processing
+- `13` local concurrent batch processing with checkpointed manager
 - `14` sync wrappers
 - `15` rate limiting
 - `35` file block transport
@@ -102,6 +108,10 @@ These demonstrate stable package capabilities directly:
 - `46` OpenAI realtime connection wrapper
 - `47` OpenAI vector-store file batches
 - `48` OpenAI deep-research clarify/rewrite kickoff
+- `49` OpenAI realtime transcription session
+- `50` OpenAI MCP and connector workflows
+- `51` OpenAI staged deep research orchestration
+- `52` OpenAI Files API upload/retrieve/list/content/delete flow
 - `53` OpenAI realtime conversation lifecycle
 - `54` OpenAI `tool_search` and namespaces
 - `55` OpenAI Uploads API lifecycle
@@ -109,12 +119,11 @@ These demonstrate stable package capabilities directly:
 - `57` OpenAI realtime push-to-talk helper flow
 - `58` OpenAI vector-store provisioning
 - `59` OpenAI realtime MCP lifecycle and tool-loading wait helper
-- `49` OpenAI realtime transcription session
-- `50` OpenAI MCP and connector workflows
-- `51` OpenAI staged deep research orchestration
-- `52` OpenAI Files API upload/retrieve/list/content/delete flow
-- `53` OpenAI realtime conversation lifecycle helpers
-- `54` OpenAI tool-search and namespace workflow
+- `60` Anthropic thinking and structured outputs
+- `61` Anthropic native content, cache controls, Models API, and optional Files
+  API upload
+- `62` provider Batch APIs; dry-run by default, live OpenAI Batch and
+  Anthropic Message Batches only when explicitly enabled
 
 ### Application-shaped examples
 
@@ -144,11 +153,20 @@ These show realistic compositions of stable package primitives:
 - `44` engine-orchestrated OpenAI workflow
 - `45` MCP approval continuation from stored OpenAI response state
 
-Current experimental classification:
+Current opt-in classification:
 
-- none of the canonical cookbook entries are marked experimental
-- some are infra-heavy and application-shaped, but they are still part of the
-  documented cookbook contract
+- realtime audio, MCP, upload, Qdrant, PostgreSQL, and provider Batch examples
+  require extra local inputs or services
+- provider Batch example `62` is dry-run by default because live mode creates
+  durable provider jobs/files
+- frontier models are not cookbook defaults; use explicit model env vars when
+  you want to demonstrate GPT-5.5, Opus 4.8, Fable 5, or higher reasoning
+- every generation request has an explicit output-token ceiling, enforced by
+  the cookbook inventory test
+- examples that create temporary provider files or vector stores delete them
+  by default unless a documented `KEEP_*` option is enabled
+- the suite runner ignores inherited `KEEP_*` flags unless
+  `LLM_CLIENT_EXAMPLE_ALLOW_PERSISTENT_RESOURCES=1` is explicitly set
 
 ## How To Interpret Success
 
@@ -204,11 +222,14 @@ For a new adopter:
 4. `38`, `39`, `40` if you plan to use OpenAI Responses lifecycle/state APIs
 5. `41`, `42`, `43` if you need reconnectable background streams, prompt
    caching controls, or context compaction
-6. `44`, `45`, `46`, `47`, `48`, `49`, `50`, `51`, `53`, `54`, `59` if you plan to orchestrate
-   stored OpenAI workflows, realtime product surfaces, or hosted-tool
-   workflows at the engine layer
-7. `36`, `37` if you plan to expose controlled service access through tools
-8. application-shaped examples that match your target use case
+6. `44`, `45`, `46`, `47`, `48`, `49`, `50`, `51`, `53`, `54`, `55`, `56`,
+   `57`, `58`, `59` if you plan to orchestrate stored OpenAI workflows,
+   realtime product surfaces, hosted-tool workflows, files/uploads, or vector
+   stores at the engine layer
+7. `60`, `61`, `62` if you plan to use Anthropic current features or real
+   provider Batch APIs
+8. `36`, `37` if you plan to expose controlled service access through tools
+9. application-shaped examples that match your target use case
 
 ## Per-Example Purpose Notes
 

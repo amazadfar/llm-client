@@ -8,7 +8,7 @@ cleanup after the `0.2.0` OpenAI/provider expansion release.
 ## Fixed
 
 - Corrected the canonical repository and documentation URLs in
-  [pyproject.toml](/home/namiral/Projects/Packages/llm-client-v1/pyproject.toml)
+  [pyproject.toml](../pyproject.toml)
   so package metadata now points at the actual `llm-client` repository rather
   than the older `intelligence-layer-bif` location.
 
@@ -26,12 +26,12 @@ cleanup after the `0.2.0` OpenAI/provider expansion release.
 ## Documentation
 
 - Updated installation guidance in
-  [docs/llm-client-installation-matrix.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-installation-matrix.md).
+  [docs/llm-client-installation-matrix.md](llm-client-installation-matrix.md).
 - Updated package installation guidance for the optional cache dependencies.
 - Updated cache backend notes in
-  [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
+  [README.md](../README.md)
   and
-  [docs/llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md).
+  [docs/llm-client-build-and-recipes-guide.md](llm-client-build-and-recipes-guide.md).
 
 ## Validation
 

@@ -7,7 +7,7 @@ standalone, typed, reusable LLM and agentic runtime framework.
 
 This release establishes the initial public package map defined in:
 
-- [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
+- [llm-client-public-api-v1.md](llm-client-public-api-v1.md)
 
 ## What 0.1.0 Means
 
@@ -85,7 +85,7 @@ the preferred package surface.
 - the GPT-5 Mini live smoke path was corrected to avoid false failures caused
   by a too-small completion budget
 - a practical build guide was added:
-  [llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md)
+  [llm-client-build-and-recipes-guide.md](llm-client-build-and-recipes-guide.md)
 - the public API map was promoted into the documented package boundary
 - support and semver docs were updated to describe the package boundary
   explicitly
@@ -94,11 +94,11 @@ the preferred package surface.
 
 If you are adopting the package in another project, start with:
 
-1. [llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md)
-2. [llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md)
-3. [llm-client-usage-and-capabilities-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-usage-and-capabilities-guide.md)
-4. [llm-client-examples-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-examples-guide.md)
-5. [examples/README.md](/home/namiral/Projects/Packages/llm-client-v1/examples/README.md)
+1. [llm-client-package-api-guide.md](llm-client-package-api-guide.md)
+2. [llm-client-build-and-recipes-guide.md](llm-client-build-and-recipes-guide.md)
+3. [llm-client-usage-and-capabilities-guide.md](llm-client-usage-and-capabilities-guide.md)
+4. [llm-client-examples-guide.md](llm-client-examples-guide.md)
+5. [examples/README.md](../examples/README.md)
 
 ## Compatibility Note
 

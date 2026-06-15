@@ -19,7 +19,7 @@ runtime kernel scope settles.
 
 The intended public API scope is defined in:
 
-- [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
+- [llm-client-public-api-v1.md](llm-client-public-api-v1.md)
 
 Breaking changes are evaluated against that public API map, not against
 internal helper modules or compatibility surfaces.

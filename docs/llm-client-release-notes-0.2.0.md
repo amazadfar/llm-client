@@ -336,10 +336,10 @@ Result: completed `52` example scripts for `subset=all` with exit code `0`.
 The last cookbook-specific fixes for that successful rerun were:
 
 - extending
-  [39_openai_conversation_state_workflow.py](/home/namiral/Projects/Packages/llm-client-v1/examples/39_openai_conversation_state_workflow.py)
+  [39_openai_conversation_state_workflow.py](../examples/39_openai_conversation_state_workflow.py)
   to a `240s` runner timeout
 - updating
-  [52_openai_files_api.py](/home/namiral/Projects/Packages/llm-client-v1/examples/52_openai_files_api.py)
+  [52_openai_files_api.py](../examples/52_openai_files_api.py)
   so `assistants`-purpose files are not incorrectly treated as downloadable
   content
 
