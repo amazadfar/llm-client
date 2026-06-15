@@ -319,6 +319,9 @@ class CompletionResult:
     refusal: str | None = None
     output_items: list[NormalizedOutputItem] | None = None
 
+    # Provider-native stop metadata (e.g. Anthropic ``stop_details`` for refusals/limits).
+    stop_details: dict[str, Any] | None = None
+
     # Request metadata
     model: str | None = None
     finish_reason: str | None = None
@@ -382,6 +385,7 @@ class CompletionResult:
             "usage": self.usage.to_dict() if self.usage else None,
             "reasoning": self.reasoning,
             "refusal": self.refusal,
+            "stop_details": self.stop_details,
             "model": self.model,
             "finish_reason": self.finish_reason,
             "status": self.status,
