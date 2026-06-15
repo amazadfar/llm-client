@@ -135,6 +135,83 @@ class ResponsesBuiltinTool:
 
 
 @dataclass(frozen=True)
+class AnthropicServerTool:
+    """Provider-native Anthropic server tool descriptor.
+
+    Kept separate from OpenAI's ``Responses*`` descriptors and from executable function
+    tools. The ``type`` carries the source-confirmed, versioned Anthropic tool type (e.g.
+    ``web_search_20250305``); the family must be one of the known Anthropic server tools.
+    Callers may pin a specific ``version`` via the convenience constructors.
+    """
+
+    type: str
+    name: str | None = None
+    config: dict[str, Any] = field(default_factory=dict)
+
+    # Source-confirmed Anthropic server tool families (version-suffixed at use time).
+    KNOWN_FAMILIES = frozenset({
+        "web_search",
+        "web_fetch",
+        "code_execution",
+        "bash",
+        "text_editor",
+        "computer",
+        "memory",
+        "tool_search",
+    })
+
+    def __post_init__(self) -> None:
+        if self.family not in self.KNOWN_FAMILIES:
+            raise ValueError(
+                f"Unknown Anthropic server tool family {self.family!r} (type={self.type!r}); "
+                f"known families: {sorted(self.KNOWN_FAMILIES)}."
+            )
+
+    @property
+    def family(self) -> str:
+        parts = str(self.type or "").rsplit("_", 1)
+        return parts[0] if len(parts) == 2 and parts[1].isdigit() else str(self.type or "")
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"type": self.type}
+        if self.name:
+            payload["name"] = self.name
+        payload.update({str(key): _serialize_provider_config_value(value) for key, value in self.config.items()})
+        return payload
+
+    def to_anthropic_format(self) -> dict[str, Any]:
+        return self.to_dict()
+
+    @classmethod
+    def of(cls, family: str, version: str, *, name: str | None = None, **config: Any) -> AnthropicServerTool:
+        return cls(type=f"{family}_{version}", name=name or family, config=dict(config))
+
+    @classmethod
+    def web_search(cls, *, version: str = "20250305", **config: Any) -> AnthropicServerTool:
+        return cls.of("web_search", version, name="web_search", **config)
+
+    @classmethod
+    def web_fetch(cls, *, version: str = "20250910", **config: Any) -> AnthropicServerTool:
+        return cls.of("web_fetch", version, name="web_fetch", **config)
+
+    @classmethod
+    def code_execution(cls, *, version: str = "20250825", **config: Any) -> AnthropicServerTool:
+        return cls.of("code_execution", version, name="code_execution", **config)
+
+    @classmethod
+    def bash(cls, *, version: str = "20250124", **config: Any) -> AnthropicServerTool:
+        return cls.of("bash", version, name="bash", **config)
+
+    @classmethod
+    def text_editor(cls, *, version: str = "20250728", **config: Any) -> AnthropicServerTool:
+        return cls(type=f"text_editor_{version}", name="str_replace_based_edit_tool", config=dict(config))
+
+    @classmethod
+    def memory(cls, *, version: str = "20250818", **config: Any) -> AnthropicServerTool:
+        return cls.of("memory", version, name="memory", **config)
+
+
+@dataclass(frozen=True)
 class ResponsesToolSearch:
     """Typed OpenAI Responses tool-search descriptor."""
 
@@ -998,6 +1075,7 @@ def is_provider_native_tool(tool: Any) -> bool:
             ResponsesToolNamespace,
             ResponsesMCPTool,
             ResponsesCustomTool,
+            AnthropicServerTool,
         ),
     )
 
