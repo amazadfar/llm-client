@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 
@@ -9,61 +10,93 @@ README = ROOT / "examples" / "README.md"
 RUNNER = ROOT / "scripts" / "ci" / "run_llm_client_examples.py"
 
 
-EXPECTED_FILES = [
-    "01_one_shot_completion.py",
-    "02_streaming.py",
-    "03_embeddings.py",
-    "04_content_blocks.py",
-    "05_structured_extraction.py",
-    "06_provider_registry_and_routing.py",
-    "07_engine_cache_retry_idempotency.py",
-    "08_tool_execution_modes.py",
-    "09_tool_calling_agent.py",
-    "10_context_memory_planning.py",
-    "11_observability_and_redaction.py",
-    "12_benchmarks.py",
-    "13_batch_processing.py",
-    "14_sync_wrappers.py",
-    "15_rate_limiting.py",
-    "35_file_block_transport.py",
-    "16_fastapi_sse.py",
-    "17_persistence_repository.py",
-    "18_memory_backed_assistant.py",
-    "19_multi_provider_failover_gateway.py",
-    "20_rag_with_citations.py",
-    "21_document_review_diff.py",
-    "22_human_in_the_loop_approvals.py",
-    "23_async_job_queue_sse.py",
-    "24_customer_support_copilot.py",
-    "25_incident_war_room_assistant.py",
-    "26_research_briefing_agent.py",
-    "27_sql_analytics_assistant.py",
-    "28_release_readiness_control_plane.py",
-    "29_multimodal_intake_pipeline.py",
-    "30_eval_and_regression_gate.py",
-    "31_tool_calling_with_partial_failures.py",
-    "32_cache_strategy_showdown.py",
-    "33_compliance_redaction_pipeline.py",
-    "34_end_to_end_mission_control.py",
-    "36_sql_adaptor_direct.py",
-    "37_sql_adaptor_tools.py",
-]
+def _numbered_examples() -> list[str]:
+    return sorted(path.name for path in COOKBOOK_DIR.glob("[0-9][0-9]_*.py"))
+
+
+def _runner_examples() -> set[str]:
+    module = ast.parse(RUNNER.read_text(encoding="utf-8"))
+    values: dict[str, list[str]] = {}
+    for node in module.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id in {"CORE_EXAMPLES", "APPLICATION_EXAMPLES"}:
+                values[target.id] = list(ast.literal_eval(node.value))
+    return set(values["CORE_EXAMPLES"]) | set(values["APPLICATION_EXAMPLES"])
+
+
+def _uncapped_generation_calls() -> list[str]:
+    failures: list[str] = []
+    for path in sorted(COOKBOOK_DIR.glob("[0-9][0-9]_*.py")):
+        module = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(module):
+            if not isinstance(node, ast.Call):
+                continue
+            keyword_names = {keyword.arg for keyword in node.keywords if keyword.arg}
+            has_expanded_kwargs = any(keyword.arg is None for keyword in node.keywords)
+            if isinstance(node.func, ast.Name) and node.func.id in {
+                "ContentRequestEnvelope",
+                "RequestSpec",
+                "extract_structured",
+            }:
+                if "max_tokens" not in keyword_names and not has_expanded_kwargs:
+                    failures.append(f"{path.name}:{node.lineno} {node.func.id}")
+                continue
+            if not isinstance(node.func, ast.Attribute) or node.func.attr not in {
+                "complete",
+                "run",
+                "stream",
+                "respond_with_web_search",
+                "respond_with_file_search",
+                "respond_with_code_interpreter",
+                "respond_with_shell",
+                "respond_with_apply_patch",
+                "respond_with_computer_use",
+                "respond_with_image_generation",
+                "respond_with_remote_mcp",
+                "respond_with_connector",
+            }:
+                continue
+            if node.func.attr.startswith("respond_with_"):
+                if "max_tokens" not in keyword_names and not has_expanded_kwargs:
+                    failures.append(f"{path.name}:{node.lineno} hosted {node.func.attr}")
+                continue
+            is_agent_call = (
+                isinstance(node.func.value, ast.Name)
+                and (
+                    node.func.value.id == "agent"
+                    or node.func.value.id.endswith("_agent")
+                )
+            )
+            if is_agent_call and "max_tokens" not in keyword_names:
+                failures.append(f"{path.name}:{node.lineno} agent {node.func.attr}")
+                continue
+            directly_supplies_messages = bool(node.args) and isinstance(
+                node.args[0],
+                (ast.List, ast.Tuple),
+            )
+            directly_supplies_messages = directly_supplies_messages or "messages" in keyword_names
+            if directly_supplies_messages and "max_tokens" not in keyword_names:
+                failures.append(f"{path.name}:{node.lineno} direct {node.func.attr}")
+    return failures
 
 
 def test_cookbook_examples_exist() -> None:
-    missing = [name for name in EXPECTED_FILES if not (COOKBOOK_DIR / name).exists()]
-    assert missing == []
+    assert len(_numbered_examples()) >= 62
 
 
 def test_cookbook_readme_references_all_examples() -> None:
     readme = README.read_text(encoding="utf-8")
-    for name in EXPECTED_FILES:
+    for name in _numbered_examples():
         assert name in readme
 
 
 def test_cookbook_runner_references_all_examples() -> None:
-    runner = RUNNER.read_text(encoding="utf-8")
-    for name in EXPECTED_FILES:
-        assert name in runner
+    assert _runner_examples() == set(_numbered_examples())
     assert "--subset core" in README.read_text(encoding="utf-8")
     assert "--subset application" in README.read_text(encoding="utf-8")
+
+
+def test_cookbook_generation_calls_have_output_budgets() -> None:
+    assert _uncapped_generation_calls() == []

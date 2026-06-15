@@ -85,6 +85,8 @@ async def main() -> None:
         request_envelope = ContentRequestEnvelope(
             provider=provider_name,
             model=model_name,
+            max_tokens=1024,
+            reasoning_effort="minimal",
             messages=(
                 ContentMessage(
                     role=Role.SYSTEM,

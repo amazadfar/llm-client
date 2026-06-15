@@ -5,10 +5,11 @@ inventory.
 
 See also:
 
-- [llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md)
-- [llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md)
-- [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
-- [llm-client-guides-index.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-guides-index.md)
+- [llm-client-package-api-guide.md](llm-client-package-api-guide.md)
+- [llm-client-build-and-recipes-guide.md](llm-client-build-and-recipes-guide.md)
+- [README.md](../README.md)
+- [llm-client-guides-index.md](llm-client-guides-index.md)
+- [llm-client-openai-anthropic-provider-guide.md](llm-client-openai-anthropic-provider-guide.md)
 
 ## Installation and Configuration
 
@@ -20,7 +21,7 @@ pip install -e .
 
 Optional providers and integrations are installed by extras. The exact matrix
 is documented in
-[llm-client-installation-matrix.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-installation-matrix.md).
+[llm-client-installation-matrix.md](llm-client-installation-matrix.md).
 
 Environment loading is explicit:
 
@@ -270,6 +271,21 @@ Best for:
 - completion caching
 - embedding caching
 - storage-agnostic cache policy handling
+
+Provider prompt caching is separate from the package response cache. OpenAI
+prompt-cache request controls and Anthropic content-block cache controls are
+forwarded to the provider and accounted through normalized usage.
+
+### Provider Batch
+
+Use:
+
+- `llm_client.batch_api`
+- provider `create_batch`, `retrieve_batch`, `list_batches`, `cancel_batch`,
+  and result methods
+
+`concurrent_complete()` is local concurrency and does not receive provider
+Batch pricing. `batch_complete()` is its deprecated compatibility alias.
 
 ### Benchmarks
 

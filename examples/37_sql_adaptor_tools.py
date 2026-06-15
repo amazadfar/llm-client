@@ -123,7 +123,9 @@ async def main() -> None:
 
             result = await agent.run(
                 "Inspect the incident_actions table and tell me which owner currently has the most open actions. "
-                "List the open action names grouped by owner."
+                "List the open action names grouped by owner.",
+                max_tokens=512,
+                reasoning_effort="minimal" if handle.name == "openai" else "low",
             )
 
             if not result.all_tool_calls:

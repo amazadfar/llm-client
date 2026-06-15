@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import asyncio
 
-from cookbook_support import build_live_provider, close_provider, fail_or_skip, print_heading, print_json
+from cookbook_support import (
+    build_live_provider,
+    close_provider,
+    fail_or_skip,
+    print_heading,
+    print_json,
+    summarize_opaque_values,
+)
 
 from llm_client.engine import ExecutionEngine
 from llm_client.providers.types import Message
@@ -40,6 +47,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=220,
+                reasoning_effort="minimal",
                 messages=[Message.user("Respond using the active conversation context in three short bullets.")],
                 extra={"conversation": conversation.conversation_id, "store": True},
             )
@@ -77,7 +86,11 @@ async def main() -> None:
                 "items_before_completion": listed_before.to_dict(),
                 "completion_content": completion.content,
                 "response_id": response_id,
-                "compaction": compaction.to_dict() if compaction else None,
+                "compaction": (
+                    summarize_opaque_values(compaction.to_dict())
+                    if compaction
+                    else None
+                ),
                 "items_after_completion": listed_after.to_dict(),
                 "deleted": deleted.to_dict(),
             }

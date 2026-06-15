@@ -201,6 +201,8 @@ async def main() -> None:
         triage_spec = RequestSpec(
             provider=provider_name,
             model=model_name,
+            max_tokens=768,
+            reasoning_effort="minimal",
             messages=[
                 Message.system(
                     "You are an LLM platform operations assistant. "
@@ -233,6 +235,8 @@ async def main() -> None:
         reply_spec = RequestSpec(
             provider=provider_name,
             model=model_name,
+            max_tokens=768,
+            reasoning_effort="minimal",
             messages=[
                 Message.system(
                     "You are a customer support incident communicator. "

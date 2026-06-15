@@ -281,6 +281,8 @@ async def _stream_completion(
     spec = dict(
         provider=handle.name,
         model=handle.model,
+        max_tokens=360,
+        reasoning_effort="minimal" if handle.name == "openai" else "low",
         messages=messages,
     )
     context = RequestContext(session_id=session_id, job_id=job_id)
@@ -473,6 +475,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
             engine=engine,
             context=RequestContext(session_id=session_id, job_id="structured-partial-failure-packet"),
             model=handle.model,

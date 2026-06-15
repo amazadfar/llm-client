@@ -77,10 +77,14 @@ class UnsupportedContentError(ValueError):
 @dataclass(frozen=True)
 class TextBlock:
     text: str
+    cache_control: dict[str, Any] | None = None
     type: ContentBlockType = ContentBlockType.TEXT
 
     def to_dict(self) -> dict[str, Any]:
-        return {"type": self.type.value, "text": self.text}
+        payload: dict[str, Any] = {"type": self.type.value, "text": self.text}
+        if self.cache_control is not None:
+            payload["cache_control"] = dict(self.cache_control)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -88,6 +92,8 @@ class ImageBlock:
     image_url: str
     detail: str | None = None
     mime_type: str | None = None
+    file_id: str | None = None
+    cache_control: dict[str, Any] | None = None
     type: ContentBlockType = ContentBlockType.IMAGE
 
     def to_dict(self) -> dict[str, Any]:
@@ -96,6 +102,10 @@ class ImageBlock:
             payload["detail"] = self.detail
         if self.mime_type:
             payload["mime_type"] = self.mime_type
+        if self.file_id:
+            payload["file_id"] = self.file_id
+        if self.cache_control is not None:
+            payload["cache_control"] = dict(self.cache_control)
         return payload
 
 
@@ -131,6 +141,7 @@ class FileBlock:
     extracted_text: str | None = None
     sha256: str | None = None
     size_bytes: int | None = None
+    cache_control: dict[str, Any] | None = None
     type: ContentBlockType = ContentBlockType.FILE
 
     def to_dict(self) -> dict[str, Any]:
@@ -153,6 +164,8 @@ class FileBlock:
             payload["sha256"] = self.sha256
         if self.size_bytes is not None:
             payload["size_bytes"] = self.size_bytes
+        if self.cache_control is not None:
+            payload["cache_control"] = dict(self.cache_control)
         return payload
 
 
@@ -414,8 +427,10 @@ def content_block_to_dict(block: ContentBlock | SerializedContentBlock) -> dict[
 
 def content_block_from_dict(data: dict[str, Any]) -> ContentBlock:
     block_type = str(data.get("type") or "").strip().lower()
+    cache_control = data.get("cache_control")
+    cache_control = dict(cache_control) if isinstance(cache_control, dict) else None
     if block_type in {"text", "input_text", "output_text"}:
-        return TextBlock(text=str(data.get("text") or data.get("content") or ""))
+        return TextBlock(text=str(data.get("text") or data.get("content") or ""), cache_control=cache_control)
     if block_type in {"image", "image_url", "input_image"}:
         image_url = data.get("image_url")
         if isinstance(image_url, dict):
@@ -423,11 +438,15 @@ def content_block_from_dict(data: dict[str, Any]) -> ContentBlock:
                 image_url=str(image_url.get("url") or ""),
                 detail=image_url.get("detail"),
                 mime_type=data.get("mime_type"),
+                file_id=data.get("file_id"),
+                cache_control=cache_control,
             )
         return ImageBlock(
             image_url=str(image_url or data.get("url") or ""),
             detail=data.get("detail"),
             mime_type=data.get("mime_type"),
+            file_id=data.get("file_id"),
+            cache_control=cache_control,
         )
     if block_type in {"audio", "input_audio"}:
         input_audio = data.get("input_audio")
@@ -443,7 +462,7 @@ def content_block_from_dict(data: dict[str, Any]) -> ContentBlock:
             mime_type=data.get("mime_type"),
             transcript=data.get("transcript"),
         )
-    if block_type in {"file", "input_file"}:
+    if block_type in {"file", "input_file", "document"}:
         return FileBlock(
             file_url=data.get("file_url"),
             file_id=data.get("file_id"),
@@ -454,6 +473,7 @@ def content_block_from_dict(data: dict[str, Any]) -> ContentBlock:
             extracted_text=data.get("extracted_text"),
             sha256=data.get("sha256"),
             size_bytes=data.get("size_bytes"),
+            cache_control=cache_control,
         )
     if block_type == "reasoning":
         return ReasoningBlock(text=str(data.get("text") or ""), signature=data.get("signature"))
@@ -865,30 +885,120 @@ def content_blocks_to_openai_responses_content(
     return parts
 
 
+def _anthropic_data_url_parts(value: str) -> tuple[str | None, str] | None:
+    """Split a ``data:<media-type>;base64,<payload>`` URL into (media_type, base64_payload)."""
+    if not value.startswith("data:"):
+        return None
+    try:
+        header, payload = value.split(",", 1)
+    except ValueError:
+        return None
+    meta = header[len("data:") :]
+    media_type = meta.split(";", 1)[0] or None
+    return (media_type, payload)
+
+
+def _anthropic_image_source(block: ImageBlock) -> dict[str, Any] | None:
+    """Build a native Anthropic image ``source`` (base64 / url / file) from an ImageBlock."""
+    if block.file_id:
+        return {"type": "file", "file_id": block.file_id}
+    url = block.image_url or ""
+    parts = _anthropic_data_url_parts(url)
+    if parts is not None:
+        media_type, payload = parts
+        return {"type": "base64", "media_type": media_type or block.mime_type or "image/png", "data": payload}
+    if url.startswith(("http://", "https://")):
+        return {"type": "url", "url": url}
+    if url.startswith(("file-", "file_")):
+        return {"type": "file", "file_id": url}
+    if url and block.mime_type:
+        # Bare base64 payload with an explicit media type.
+        return {"type": "base64", "media_type": block.mime_type, "data": url}
+    return None
+
+
+def _anthropic_document_block(block: FileBlock) -> dict[str, Any] | None:
+    """Build a native Anthropic ``document`` block (file / url / base64 / text source)."""
+    source: dict[str, Any] | None = None
+    if block.file_id:
+        source = {"type": "file", "file_id": block.file_id}
+    elif block.file_url and block.file_url.startswith(("http://", "https://")):
+        source = {"type": "url", "url": block.file_url}
+    elif block.data is not None:
+        data = block.data.decode("utf-8") if isinstance(block.data, bytes) else block.data
+        parts = _anthropic_data_url_parts(data) if isinstance(data, str) else None
+        if parts is not None:
+            media_type, payload = parts
+            source = {"type": "base64", "media_type": media_type or block.mime_type or "application/pdf", "data": payload}
+        elif block.mime_type and block.mime_type.startswith("text/"):
+            source = {"type": "text", "media_type": "text/plain", "data": data}
+        else:
+            source = {"type": "base64", "media_type": block.mime_type or "application/pdf", "data": data}
+    elif block.extracted_text:
+        source = {"type": "text", "media_type": "text/plain", "data": block.extracted_text}
+    if source is None:
+        return None
+    document: dict[str, Any] = {"type": "document", "source": source}
+    if block.name:
+        document["title"] = block.name
+    return document
+
+
+def _with_cache_control(payload: dict[str, Any], cache_control: dict[str, Any] | None) -> dict[str, Any]:
+    if cache_control is not None:
+        payload = dict(payload)
+        payload["cache_control"] = dict(cache_control)
+    return payload
+
+
 def content_blocks_to_anthropic_content(
     blocks: list[ContentBlock] | list[dict[str, Any]] | str | None,
     *,
     mode: ContentHandlingMode = ContentHandlingMode.LOSSY,
     allow_tool_use: bool = False,
+    supports_images: bool = False,
+    supports_files: bool = False,
 ) -> str | list[dict[str, Any]]:
+    """Translate content blocks into native Anthropic message content.
+
+    When ``supports_images``/``supports_files`` are set, image and PDF/file blocks are
+    emitted as native Anthropic ``image``/``document`` blocks instead of being degraded to
+    placeholder text. ``cache_control`` markers on any block are preserved on the emitted
+    block (lossless cache placement).
+    """
     projection = project_content_blocks(
         blocks,
         provider="anthropic",
         mode=mode,
-        supports_images=False,
+        supports_images=supports_images,
         supports_audio_data=False,
         supports_audio_url=False,
-        supports_files=False,
+        supports_files=supports_files,
         allow_tool_calls=allow_tool_use,
     )
     content: list[dict[str, Any]] = []
     for block in projection.blocks:
         if isinstance(block, TextBlock):
-            content.append({"type": "text", "text": block.text})
+            content.append(_with_cache_control({"type": "text", "text": block.text}, block.cache_control))
         elif isinstance(block, ReasoningBlock):
-            content.append({"type": "text", "text": block.text})
+            if block.signature:
+                content.append({"type": "thinking", "thinking": block.text, "signature": block.signature})
+            else:
+                content.append({"type": "text", "text": block.text})
         elif isinstance(block, ToolResultBlock):
             content.append({"type": "text", "text": block.content})
+        elif isinstance(block, ImageBlock):
+            source = _anthropic_image_source(block)
+            if source is not None:
+                content.append(_with_cache_control({"type": "image", "source": source}, block.cache_control))
+            else:
+                content.append({"type": "text", "text": _content_placeholder_text(block) or "[image]"})
+        elif isinstance(block, FileBlock):
+            document = _anthropic_document_block(block)
+            if document is not None:
+                content.append(_with_cache_control(document, block.cache_control))
+            else:
+                content.append({"type": "text", "text": _content_placeholder_text(block) or "[file]"})
         elif isinstance(block, ToolCallBlock) and allow_tool_use:
             try:
                 parsed_args = json.loads(block.arguments) if block.arguments else {}
@@ -903,7 +1013,7 @@ def content_blocks_to_anthropic_content(
                     "input": input_data,
                 }
             )
-    if len(content) == 1 and content[0].get("type") == "text":
+    if len(content) == 1 and content[0].get("type") == "text" and "cache_control" not in content[0]:
         return str(content[0].get("text") or "")
     return content
 

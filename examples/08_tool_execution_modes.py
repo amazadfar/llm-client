@@ -317,6 +317,8 @@ async def main() -> None:
                 ),
             ],
             tools=provider_tools,
+            max_tokens=1024,
+            reasoning_effort="minimal",
         )
         if not planning_result.tool_calls:
             _fail_or_skip("The live model did not emit tool calls for the tool execution showcase.")

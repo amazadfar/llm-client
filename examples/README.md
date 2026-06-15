@@ -57,7 +57,8 @@ promoted into that default ring, and can be run directly by filename.
 - `11_observability_and_redaction.py`: diagnostics, lifecycle reports, metrics,
   and redaction
 - `12_benchmarks.py`: deterministic benchmark harness and saved report
-- `13_batch_processing.py`: engine batch execution and batch manager
+- `13_batch_processing.py`: engine local concurrency with
+  `concurrent_complete()` plus checkpointed batch manager
 - `14_sync_wrappers.py`: sync access to conversation and summarization helpers
 - `15_rate_limiting.py`: token/request limiter usage
 - `35_file_block_transport.py`: canonical file preparation, native OpenAI
@@ -104,6 +105,12 @@ promoted into that default ring, and can be run directly by filename.
   file specs, wait for ingestion, and run a hosted search
 - `59_openai_realtime_mcp_lifecycle.py`: realtime MCP session-tool injection
   and `mcp_list_tools` lifecycle waiting
+- `60_anthropic_thinking_and_structured_outputs.py`: Anthropic
+  `output_config.effort` plus structured output-format handling
+- `61_anthropic_native_content_cache_and_files.py`: Anthropic native content
+  blocks, cache-control placement, Models API, and optional Files API upload
+- `62_provider_batch_apis.py`: dry-run provider Batch payloads by default,
+  with opt-in live OpenAI Batch and Anthropic Message Batches job creation
 
 ## Combined / Application-Shaped Examples
 
@@ -153,8 +160,19 @@ promoted into that default ring, and can be run directly by filename.
 
 ## Notes
 
-- The examples now use real provider calls 
+- The examples now use real provider calls.
 - By default, the cookbook expects `OPENAI_API_KEY` and uses OpenAI models.
+- Defaults are cost-controlled. The standard cookbook uses models such as
+  `gpt-5-nano`, `gpt-5-mini`, `o4-mini-deep-research`, and
+  `claude-sonnet-4-6`; it does not default to Opus 4.8, Fable 5, GPT-5.5,
+  high reasoning, or long-running deep-research waits.
+- Every completion request declares a bounded `max_tokens` value. The cookbook
+  inventory test rejects new unbounded generation calls.
+- Examples that create provider files or vector stores clean them up by
+  default. Provider Batch remains dry-run unless explicitly enabled.
+- The suite runner forces cleanup even if a local `.env` contains legacy
+  `KEEP_*` flags. Set `LLM_CLIENT_EXAMPLE_ALLOW_PERSISTENT_RESOURCES=1` only
+  when intentionally preserving remote cookbook resources.
 - The OpenAI Responses lifecycle/state examples (`38`-`45`) expect
   `LLM_CLIENT_EXAMPLE_PROVIDER=openai`.
 - Additional OpenAI capability examples use:
@@ -199,6 +217,18 @@ promoted into that default ring, and can be run directly by filename.
   `LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL`,
   `LLM_CLIENT_EXAMPLE_MCP_AUTHORIZATION`, and optionally
   `LLM_CLIENT_EXAMPLE_MCP_REQUIRE_APPROVAL`.
+- Example `60` uses `LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL` and optionally
+  `LLM_CLIENT_EXAMPLE_ANTHROPIC_EFFORT`.
+- Example `61` uses `LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL`, optionally
+  `LLM_CLIENT_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH`, and optionally
+  `LLM_CLIENT_EXAMPLE_KEEP_ANTHROPIC_FILE=0|1`.
+- Example `62` is dry-run by default. Set
+  `LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH=1` to create live provider Batch jobs,
+  and optionally set `LLM_CLIENT_EXAMPLE_OPENAI_BATCH_MODEL` /
+  `LLM_CLIENT_EXAMPLE_ANTHROPIC_BATCH_MODEL`.
+- Example `42` uses `LLM_CLIENT_EXAMPLE_OPENAI_REASONING_MODEL` and defaults
+  to `gpt-5-mini` so encrypted reasoning and visible output both fit within a
+  bounded request.
 - You can switch providers with:
   - `LLM_CLIENT_EXAMPLE_PROVIDER=openai|anthropic|google`
   - `LLM_CLIENT_EXAMPLE_MODEL=...`

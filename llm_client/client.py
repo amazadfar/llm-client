@@ -153,16 +153,20 @@ class OpenAIClient:
         **kwargs: Any,
     ) -> list[CompletionResult]:
         """
-        Execute a batch of requests concurrently.
+        Execute multiple requests with bounded local concurrency.
+
+        This performs local concurrency in the standard service tier (no provider Batch
+        API, no batch billing discount). For durable, discounted provider batching use
+        the dedicated provider Batch methods.
 
         Args:
             specs: List of request specifications
-            **kwargs: Arguments passed to engine.batch_complete()
+            **kwargs: Arguments passed to engine.concurrent_complete()
 
         Returns:
             List of CompletionResults
         """
-        return await self.engine.batch_complete(specs, **kwargs)
+        return await self.engine.concurrent_complete(specs, **kwargs)
 
     async def close(self) -> None:
         """Close client resources."""

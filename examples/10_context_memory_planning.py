@@ -247,6 +247,8 @@ async def main() -> None:
             spec=RequestSpec(
                 provider=provider_name,
                 model=model_name,
+                max_tokens=1536,
+                reasoning_effort="minimal",
                 messages=[
                     Message.system("You write concise, evidence-based grant guidance."),
                     Message.user(final_prompt),

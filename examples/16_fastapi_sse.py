@@ -183,6 +183,8 @@ async def incident_brief_stream(payload: IncidentBriefRequest) -> StreamingRespo
             RequestSpec(
                 provider=handle.name,
                 model=handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if handle.name == "openai" else "low",
                 messages=_prompt_from_request(payload),
             )
         ):

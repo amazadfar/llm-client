@@ -6,6 +6,7 @@ that LLM agents can use.
 """
 
 from .base import (
+    AnthropicServerTool,
     ResponsesApplyPatchCallOutput,
     ResponsesAttributeFilter,
     ResponsesBuiltinTool,
@@ -62,6 +63,7 @@ from .middleware import (
 )
 
 __all__ = [
+    "AnthropicServerTool",
     # Core
     "Tool",
     "ToolExecutionBatch",

@@ -72,6 +72,8 @@ def build_batch_specs(provider_name: str, model_name: str, items: list[dict[str,
             RequestSpec(
                 provider=provider_name,
                 model=model_name,
+                max_tokens=768,
+                reasoning_effort="minimal",
                 messages=[
                     Message.system(
                         "You are an operations triage analyst. "
@@ -166,7 +168,7 @@ async def main() -> None:
 
         engine = ExecutionEngine(provider=provider)
         batch_started = time.perf_counter()
-        engine_results = await engine.batch_complete(specs, max_concurrency=3)
+        engine_results = await engine.concurrent_complete(specs, max_concurrency=3)
         engine_batch_duration_ms = (time.perf_counter() - batch_started) * 1000
 
         worker_engine = ExecutionEngine(provider=provider)
@@ -176,6 +178,8 @@ async def main() -> None:
             spec = RequestSpec(
                 provider=provider_name,
                 model=model_name,
+                max_tokens=512,
+                reasoning_effort="minimal",
                 messages=[
                     Message.system(
                         "You are routing support escalations. "
@@ -230,10 +234,13 @@ async def main() -> None:
             )
         )
 
-        print("\n=== Engine Batch Complete ===\n")
+        print("\n=== Engine Concurrent Complete ===\n")
         print(
             json.dumps(
                 {
+                    "mode": "local bounded concurrency",
+                    "provider_batch_api": False,
+                    "batch_discount": False,
                     "max_concurrency": 3,
                     "batch_duration_ms": round(engine_batch_duration_ms, 2),
                     "ordered_results": summarize_engine_results(items, engine_results),

@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import asyncio
 
-from cookbook_support import build_live_provider, close_provider, fail_or_skip, print_heading, print_json, summarize_usage
+from cookbook_support import (
+    build_live_provider,
+    close_provider,
+    fail_or_skip,
+    print_heading,
+    print_json,
+    summarize_opaque_values,
+    summarize_usage,
+)
 
 from llm_client.engine import ExecutionEngine
 from llm_client.providers.types import Message
@@ -55,6 +63,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=320,
+                reasoning_effort="minimal",
                 messages=[
                     Message.user(
                         "Using the active conversation state, produce a concise incident handoff with risks, next action, and one watch metric."
@@ -95,7 +105,7 @@ async def main() -> None:
                 "completion_content": completion.content,
                 "completion_usage": summarize_usage(completion.usage),
                 "response_id": response_id or None,
-                "compaction": compaction.to_dict(),
+                "compaction": summarize_opaque_values(compaction.to_dict()),
                 "compaction_output_types": [item.type for item in (compaction.output_items or [])],
                 "items_after_count": len(items_after.items),
                 "deleted": deleted.to_dict(),

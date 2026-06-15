@@ -67,6 +67,8 @@ async def main() -> None:
             RequestSpec(
                 provider="auto",
                 model=primary_model,
+                max_tokens=1024,
+                reasoning_effort="low",
                 messages=[
                     Message.system("You are a helpful assistant that routes requests to the appropriate provider."),
                     Message.user(

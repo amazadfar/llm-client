@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,6 +51,17 @@ from llm_client.structured import StructuredOutputConfig
 from llm_client.structured_benchmarks import StructuredBenchmarkCase
 from llm_client.tools import Tool, ToolExecutionEngine, ToolRegistry
 from tests.llm_client.fakes import ScriptedProvider, ok_result
+
+
+def _load_rc_benchmark_script():
+    path = Path(__file__).resolve().parents[2] / "scripts" / "ci" / "run_llm_client_rc_benchmarks.py"
+    spec = importlib.util.spec_from_file_location("run_llm_client_rc_benchmarks", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 class _InMemoryCacheBackend(BaseCacheBackend):
@@ -307,3 +321,36 @@ async def test_benchmark_reports_can_be_stored_and_compared() -> None:
     assert reloaded.metadata.label == "phase14-compare"
     assert comparison.baseline_label == baseline.metadata.label
     assert {record.name for record in comparison.records} >= {"completion_smoke", "stream_smoke"}
+
+
+def test_rc_benchmark_semantic_snapshot_normalizes_json_keys() -> None:
+    script = _load_rc_benchmark_script()
+
+    stable = script._stable_metrics(
+        "structured_smoke",
+        {
+            "repair_attempt_histogram": {0: 1, 1: 1},
+            "total_cases": 2,
+            "success_rate": 1.0,
+            "repaired_success_rate": 0.5,
+            "repaired_share_of_successes": 0.5,
+            "avg_repair_attempts": 0.5,
+            "max_repair_attempts": 1,
+            "avg_latency_ms": 12.3,
+        },
+    )
+
+    assert stable["repair_attempt_histogram"] == {"0": 1, "1": 1}
+    assert "avg_latency_ms" not in stable
+    assert script._diff_values(stable, json.loads(json.dumps(stable))) == []
+
+
+def test_rc_benchmark_semantic_diff_reports_behavior_changes() -> None:
+    script = _load_rc_benchmark_script()
+
+    diffs = script._diff_values(
+        {"records": [{"name": "cache_smoke", "metrics": {"cache_hits": 0}}]},
+        {"records": [{"name": "cache_smoke", "metrics": {"cache_hits": 1}}]},
+    )
+
+    assert diffs == ["$.records[0].metrics.cache_hits: 0 != 1"]

@@ -827,7 +827,7 @@ class BaseProvider(Provider, ABC):
             model: ModelProfile class or model key string
             **kwargs: Provider-specific configuration
         """
-        from ..models import ModelProfile
+        from ..models import ModelProfile, warn_if_deprecated
 
         if isinstance(model, str):
             self._model = ModelProfile.get(model)
@@ -835,6 +835,10 @@ class BaseProvider(Provider, ABC):
             self._model = model
         else:
             raise ValueError("Model must be a ModelProfile subclass or a model key string")
+
+        # Temporary lifecycle guard (Phase 1): warn when a deprecated/retired model is
+        # selected. Superseded by structured Catalog v2 lifecycle handling in Phase 2.
+        warn_if_deprecated(self._model)
 
     @property
     def model(self) -> type[ModelProfile]:

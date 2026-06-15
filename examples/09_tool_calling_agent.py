@@ -163,7 +163,9 @@ async def main() -> None:
         result = await agent.run(
             "Prepare the incident briefing for checkout-api. "
             "Use the tools to gather the current incident snapshot, recent alerts, dependency health, runbook guidance, "
-            "and on-call ownership before you answer."
+            "and on-call ownership before you answer.",
+            max_tokens=1536,
+            reasoning_effort="minimal",
         )
 
         if not result.all_tool_calls:

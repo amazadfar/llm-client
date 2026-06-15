@@ -157,6 +157,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
             reasoning_effort="low",
         )
 

@@ -227,7 +227,8 @@ async def main() -> None:
                     "additionalProperties": False,
                 },
                 max_repair_attempts=1,
-            )
+            ),
+            max_tokens=2048,
         )
         data = structured.data if structured.valid else None
         answer_text = _assembled_brief(data)

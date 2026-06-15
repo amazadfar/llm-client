@@ -19,7 +19,7 @@ Other environments may work, but CI validation focuses on Linux runners.
 ### Stable Namespace Support
 
 The stable namespaces defined in
-[llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
+[llm-client-public-api-v1.md](llm-client-public-api-v1.md)
 are the primary supported integration surface. During the `0.x` line this map
 is still allowed to evolve; a future `1.0.0` release will mark the frozen
 package contract.

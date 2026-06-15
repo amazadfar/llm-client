@@ -171,6 +171,12 @@ class Usage:
     cache_creation_input_cost: float = 0.0
     total_cost: float = 0.0
 
+    # Phase 5: cost completeness + execution context for honest accounting.
+    cost_status: str = "complete"  # complete | partial | unknown
+    execution_mode: str | None = None  # standard | concurrent | provider_batch
+    requested_service_tier: str | None = None
+    actual_service_tier: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -186,6 +192,10 @@ class Usage:
             "cache_read_input_cost": self.cache_read_input_cost,
             "cache_creation_input_cost": self.cache_creation_input_cost,
             "total_cost": self.total_cost,
+            "cost_status": self.cost_status,
+            "execution_mode": self.execution_mode,
+            "requested_service_tier": self.requested_service_tier,
+            "actual_service_tier": self.actual_service_tier,
         }
 
     @classmethod
@@ -204,6 +214,10 @@ class Usage:
             cache_read_input_cost=data.get("cache_read_input_cost", 0.0),
             cache_creation_input_cost=data.get("cache_creation_input_cost", 0.0),
             total_cost=data.get("total_cost", 0.0),
+            cost_status=data.get("cost_status", "complete"),
+            execution_mode=data.get("execution_mode"),
+            requested_service_tier=data.get("requested_service_tier"),
+            actual_service_tier=data.get("actual_service_tier"),
         )
 
 
@@ -305,6 +319,9 @@ class CompletionResult:
     refusal: str | None = None
     output_items: list[NormalizedOutputItem] | None = None
 
+    # Provider-native stop metadata (e.g. Anthropic ``stop_details`` for refusals/limits).
+    stop_details: dict[str, Any] | None = None
+
     # Request metadata
     model: str | None = None
     finish_reason: str | None = None
@@ -312,6 +329,12 @@ class CompletionResult:
     # Status tracking
     status: int = 200
     error: str | None = None
+
+    # Service tier (Phase 4): the tier requested by the caller and the tier the provider
+    # reports actually serving the request. Kept separate (audit O-API-007 / A-API-009);
+    # ``service_tier`` may differ from ``requested_service_tier`` (e.g. "auto").
+    requested_service_tier: str | None = None
+    service_tier: str | None = None
 
     # Original response for debugging
     raw_response: Any | None = field(default=None, repr=False)
@@ -362,6 +385,7 @@ class CompletionResult:
             "usage": self.usage.to_dict() if self.usage else None,
             "reasoning": self.reasoning,
             "refusal": self.refusal,
+            "stop_details": self.stop_details,
             "model": self.model,
             "finish_reason": self.finish_reason,
             "status": self.status,
@@ -681,6 +705,322 @@ class AudioSpeechResult:
             "status": self.status,
             "error": self.error,
             "byte_length": self.byte_length,
+        }
+
+
+@dataclass
+class ContainerResource:
+    """OpenAI hosted-container lifecycle resource."""
+
+    container_id: str
+    name: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+    expires_after: dict[str, Any] | None = None
+    last_active_at: int | None = None
+    memory_limit: str | None = None
+    network_policy: dict[str, Any] | None = None
+    provider: str = "openai"
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return self.status not in {"failed", "deleted"}
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "container_id": self.container_id,
+            "name": self.name,
+            "status": self.status,
+            "created_at": self.created_at,
+            "expires_after": dict(self.expires_after or {}) if self.expires_after is not None else None,
+            "last_active_at": self.last_active_at,
+            "memory_limit": self.memory_limit,
+            "network_policy": dict(self.network_policy or {}) if self.network_policy is not None else None,
+            "provider": self.provider,
+        }
+
+
+@dataclass
+class ContainersPage:
+    """A page of OpenAI hosted containers."""
+
+    items: list[ContainerResource]
+    first_id: str | None = None
+    last_id: str | None = None
+    has_more: bool = False
+    raw_response: Any | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "items": [item.to_dict() for item in self.items],
+            "first_id": self.first_id,
+            "last_id": self.last_id,
+            "has_more": self.has_more,
+        }
+
+
+@dataclass
+class ContainerFileResource:
+    """A file attached to an OpenAI hosted container."""
+
+    file_id: str
+    container_id: str
+    path: str | None = None
+    bytes: int | None = None
+    created_at: int | None = None
+    source: str | None = None
+    provider: str = "openai"
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return bool(self.file_id)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "file_id": self.file_id,
+            "container_id": self.container_id,
+            "path": self.path,
+            "bytes": self.bytes,
+            "created_at": self.created_at,
+            "source": self.source,
+            "provider": self.provider,
+        }
+
+
+@dataclass
+class ContainerFilesPage:
+    """A page of files attached to an OpenAI hosted container."""
+
+    container_id: str
+    items: list[ContainerFileResource]
+    first_id: str | None = None
+    last_id: str | None = None
+    has_more: bool = False
+    raw_response: Any | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "container_id": self.container_id,
+            "items": [item.to_dict() for item in self.items],
+            "first_id": self.first_id,
+            "last_id": self.last_id,
+            "has_more": self.has_more,
+        }
+
+
+@dataclass
+class SkillResource:
+    """OpenAI hosted-skill lifecycle resource."""
+
+    skill_id: str
+    name: str | None = None
+    description: str | None = None
+    default_version: str | None = None
+    latest_version: str | None = None
+    created_at: int | None = None
+    provider: str = "openai"
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return bool(self.skill_id)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "name": self.name,
+            "description": self.description,
+            "default_version": self.default_version,
+            "latest_version": self.latest_version,
+            "created_at": self.created_at,
+            "provider": self.provider,
+        }
+
+
+@dataclass
+class SkillsPage:
+    """A page of OpenAI hosted skills."""
+
+    items: list[SkillResource]
+    first_id: str | None = None
+    last_id: str | None = None
+    has_more: bool = False
+    raw_response: Any | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "items": [item.to_dict() for item in self.items],
+            "first_id": self.first_id,
+            "last_id": self.last_id,
+            "has_more": self.has_more,
+        }
+
+
+@dataclass
+class SkillVersionResource:
+    """A version of an OpenAI hosted skill."""
+
+    skill_id: str
+    version: str
+    name: str | None = None
+    description: str | None = None
+    created_at: int | None = None
+    provider: str = "openai"
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return bool(self.skill_id and self.version)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "version": self.version,
+            "name": self.name,
+            "description": self.description,
+            "created_at": self.created_at,
+            "provider": self.provider,
+        }
+
+
+@dataclass
+class SkillVersionsPage:
+    """A page of versions for an OpenAI hosted skill."""
+
+    skill_id: str
+    items: list[SkillVersionResource]
+    first_id: str | None = None
+    last_id: str | None = None
+    has_more: bool = False
+    raw_response: Any | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "items": [item.to_dict() for item in self.items],
+            "first_id": self.first_id,
+            "last_id": self.last_id,
+            "has_more": self.has_more,
+        }
+
+
+@dataclass
+class VideoResource:
+    """OpenAI Videos API job or generated-video resource."""
+
+    video_id: str
+    status: str | None = None
+    model: str | None = None
+    prompt: str | None = None
+    progress: float | None = None
+    seconds: str | None = None
+    size: str | None = None
+    created_at: int | None = None
+    completed_at: int | None = None
+    expires_at: int | None = None
+    remixed_from_video_id: str | None = None
+    error: dict[str, Any] | None = None
+    provider: str = "openai"
+    experimental: bool = True
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "failed" and self.error is None
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in {"completed", "failed", "expired"}
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "video_id": self.video_id,
+            "status": self.status,
+            "model": self.model,
+            "prompt": self.prompt,
+            "progress": self.progress,
+            "seconds": self.seconds,
+            "size": self.size,
+            "created_at": self.created_at,
+            "completed_at": self.completed_at,
+            "expires_at": self.expires_at,
+            "remixed_from_video_id": self.remixed_from_video_id,
+            "error": dict(self.error or {}) if self.error is not None else None,
+            "provider": self.provider,
+            "experimental": self.experimental,
+        }
+
+
+@dataclass
+class VideosPage:
+    """A page of OpenAI video jobs."""
+
+    items: list[VideoResource]
+    first_id: str | None = None
+    last_id: str | None = None
+    has_more: bool = False
+    raw_response: Any | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "items": [item.to_dict() for item in self.items],
+            "first_id": self.first_id,
+            "last_id": self.last_id,
+            "has_more": self.has_more,
+        }
+
+
+@dataclass
+class VideoContentResult:
+    """Binary content downloaded from an OpenAI video resource."""
+
+    video_id: str
+    content: bytes
+    variant: str = "video"
+    media_type: str | None = None
+    provider: str = "openai"
+    experimental: bool = True
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def byte_length(self) -> int:
+        return len(self.content)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "video_id": self.video_id,
+            "variant": self.variant,
+            "media_type": self.media_type,
+            "byte_length": self.byte_length,
+            "provider": self.provider,
+            "experimental": self.experimental,
+        }
+
+
+@dataclass
+class VideoCharacterResource:
+    """Reusable non-human character asset for the OpenAI Videos API."""
+
+    character_id: str
+    name: str | None = None
+    created_at: int | None = None
+    provider: str = "openai"
+    experimental: bool = True
+    raw_response: Any | None = field(default=None, repr=False)
+
+    @property
+    def ok(self) -> bool:
+        return bool(self.character_id)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "character_id": self.character_id,
+            "name": self.name,
+            "created_at": self.created_at,
+            "provider": self.provider,
+            "experimental": self.experimental,
         }
 
 
@@ -1884,6 +2224,18 @@ __all__ = [
     "ImageGenerationResult",
     "AudioTranscriptionResult",
     "AudioSpeechResult",
+    "ContainerResource",
+    "ContainersPage",
+    "ContainerFileResource",
+    "ContainerFilesPage",
+    "SkillResource",
+    "SkillsPage",
+    "SkillVersionResource",
+    "SkillVersionsPage",
+    "VideoResource",
+    "VideosPage",
+    "VideoContentResult",
+    "VideoCharacterResource",
     "VectorStoreResource",
     "VectorStoresPage",
     "VectorStoreSearchResult",

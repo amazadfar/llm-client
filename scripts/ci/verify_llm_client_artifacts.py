@@ -47,6 +47,8 @@ def verify_wheel_contents(wheel_path: Path) -> None:
         "llm_client/__init__.py",
         "llm_client/assets/model_catalog.json",
         "llm_client/assets/model_catalog.schema.json",
+        "llm_client/assets/model_catalog.schema.v2.json",
+        "llm_client/assets/provider_source_manifest.json",
         "llm_client/py.typed",
     }
     missing = [name for name in expected if name not in names]
@@ -61,6 +63,8 @@ def verify_sdist_contents(sdist_path: Path) -> None:
         "/llm_client/__init__.py",
         "/llm_client/assets/model_catalog.json",
         "/llm_client/assets/model_catalog.schema.json",
+        "/llm_client/assets/model_catalog.schema.v2.json",
+        "/llm_client/assets/provider_source_manifest.json",
         "/llm_client/py.typed",
     ]
     for suffix in expected_suffixes:
@@ -71,12 +75,15 @@ def verify_sdist_contents(sdist_path: Path) -> None:
 
 
 def install_and_smoke_test(wheel_path: Path) -> None:
+    expected_version = str(_artifact_version(wheel_path))
     with tempfile.TemporaryDirectory(prefix="llm-client-wheel-") as tmpdir:
         smoke = "\n".join(
             [
+                "from importlib.metadata import version",
                 "import sys",
                 f"wheel_path = {str(wheel_path)!r}",
                 f"repo_root = {str(ROOT)!r}",
+                f"expected_version = {expected_version!r}",
                 "sys.path = [p for p in sys.path if p not in ('', repo_root)]",
                 "sys.path.insert(0, wheel_path)",
                 "import llm_client",
@@ -86,6 +93,7 @@ def install_and_smoke_test(wheel_path: Path) -> None:
                 "import llm_client.cache",
                 "import llm_client.agent",
                 "import llm_client.observability",
+                "assert version('llm-client') == expected_version",
                 "print('llm_client wheel import smoke passed')",
             ]
         )

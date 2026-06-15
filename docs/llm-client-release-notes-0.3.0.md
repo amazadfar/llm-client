@@ -32,7 +32,7 @@ controls, and updated model coverage.
 
 ## Changed
 
-- The repository root [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
+- The repository root [README.md](../README.md)
   is now the canonical package reference.
 - OpenAI inline file transport now emits documented
   `data:<mime>;base64,...` `file_data` values for inline file blocks in the
@@ -43,13 +43,13 @@ controls, and updated model coverage.
 ## Documentation
 
 - Updated the package reference in
-  [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md).
+  [README.md](../README.md).
 - Updated the package API guide in
-  [docs/llm-client-package-api-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-package-api-guide.md).
+  [docs/llm-client-package-api-guide.md](llm-client-package-api-guide.md).
 - Updated the public API map in
-  [docs/llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md).
+  [docs/llm-client-public-api-v1.md](llm-client-public-api-v1.md).
 - Updated the examples guide in
-  [docs/llm-client-examples-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-examples-guide.md).
+  [docs/llm-client-examples-guide.md](llm-client-examples-guide.md).
 - Updated OpenAI capability documentation and model coverage notes.
 
 ## Validation

@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import time
+import warnings
 from collections.abc import AsyncIterator, Iterable
 from dataclasses import dataclass, replace
 from typing import Any
@@ -699,6 +700,8 @@ class ExecutionEngine:
                 )
                 diagnostics["providers_dispatched"].append(provider_id)
                 diagnostics["providers_tried"] = list(diagnostics["providers_dispatched"])
+                stream_kwargs = dict(spec.extra)
+                self._forward_request_controls(provider.stream, spec, stream_kwargs)
                 async for event in self._stream_with_timeout(
                     provider.stream(
                     spec.messages,
@@ -709,7 +712,7 @@ class ExecutionEngine:
                     response_format=spec.response_format,
                     reasoning_effort=spec.reasoning_effort,
                     reasoning=spec.reasoning,
-                    **spec.extra,
+                    **stream_kwargs,
                     ),
                     timeout=request_timeout,
                 ):
@@ -3008,6 +3011,40 @@ class ExecutionEngine:
             tenant_id=ctx.tenant_id if ctx else None,
         )
 
+    @staticmethod
+    def _forward_request_controls(call: Any, spec: RequestSpec, kwargs: dict[str, Any]) -> None:
+        """Forward stable shared controls and typed provider options to a provider call.
+
+        Stable ``RequestSpec`` fields (cache/include controls plus the Phase 4 shared
+        fields ``service_tier``, ``top_p``, ``metadata``) and the typed, namespaced
+        provider options (``openai_options`` / ``anthropic_options``) are forwarded only
+        when set and only when the target callable explicitly declares the parameter, so a
+        provider receives only what it actually supports (e.g. Anthropic gets ``effort``,
+        OpenAI gets ``verbosity``; neither receives the other's). Pre-existing values in
+        ``kwargs`` (e.g. supplied via ``spec.extra``) take precedence.
+        """
+        try:
+            params = inspect.signature(call).parameters
+        except (TypeError, ValueError):
+            return
+        for field in (
+            "include",
+            "prompt_cache_key",
+            "prompt_cache_retention",
+            "service_tier",
+            "top_p",
+            "metadata",
+        ):
+            value = getattr(spec, field, None)
+            if value is not None and field in params and field not in kwargs:
+                kwargs[field] = value
+        for options in (spec.openai_options, spec.anthropic_options):
+            if options is None:
+                continue
+            for field, value in options.provider_kwargs().items():
+                if field in params and field not in kwargs:
+                    kwargs[field] = value
+
     async def _call_provider(self, provider: Provider, spec: RequestSpec) -> CompletionResult:
         provider_kwargs = dict(spec.extra)
         for key in ("cache_response", "cache_collection", "rewrite_cache", "regen_cache"):
@@ -3019,7 +3056,9 @@ class ExecutionEngine:
         if "backoff" in signature.parameters and "backoff" not in provider_kwargs:
             provider_kwargs["backoff"] = 0.0
 
-        return await provider.complete(
+        self._forward_request_controls(provider.complete, spec, provider_kwargs)
+
+        result = await provider.complete(
             spec.messages,
             tools=spec.tools,
             tool_choice=spec.tool_choice,
@@ -3030,6 +3069,25 @@ class ExecutionEngine:
             reasoning=spec.reasoning,
             **provider_kwargs,
         )
+        self._attach_service_tier(result, spec)
+        return result
+
+    @staticmethod
+    def _attach_service_tier(result: Any, spec: RequestSpec) -> None:
+        """Record the requested tier and, best-effort, the provider-reported actual tier.
+
+        Kept separate so a caller can observe when a requested tier (e.g. "auto") resolves
+        to a different served tier (audit O-API-007 / A-API-009).
+        """
+        if not isinstance(result, CompletionResult):
+            return
+        if result.requested_service_tier is None:
+            result.requested_service_tier = spec.service_tier
+        if result.service_tier is None and result.raw_response is not None:
+            raw = result.raw_response
+            actual = raw.get("service_tier") if isinstance(raw, dict) else getattr(raw, "service_tier", None)
+            if actual is not None:
+                result.service_tier = str(actual)
 
     async def _call_provider_with_timeout(
         self,
@@ -3343,7 +3401,7 @@ class ExecutionEngine:
             model=cached.get("model"),
         )
 
-    async def batch_complete(
+    async def concurrent_complete(
         self,
         specs: Iterable[RequestSpec],
         *,
@@ -3351,15 +3409,26 @@ class ExecutionEngine:
         **kwargs: Any,
     ) -> list[CompletionResult]:
         """
-        Execute a batch of requests concurrently.
+        Execute multiple requests with bounded *local* concurrency.
+
+        This is local concurrency only. Each request is dispatched independently through
+        :meth:`complete` in the provider's **standard service tier**, bounded by an
+        ``asyncio.Semaphore``. It is **not** a provider Batch API: there is no durable
+        batch job, no asynchronous batch lifecycle, and crucially **no batch billing
+        discount**. Requests are billed at their normal (standard-tier) rates.
+
+        For durable, discounted provider batching, use the dedicated provider Batch
+        methods (OpenAI Batch / Anthropic Message Batches) instead; those are separate
+        operations with their own job lifecycle and batch pricing.
 
         Args:
-            specs: List of request specifications
-            max_concurrency: Override default concurrency limit for this batch (lower only effectively)
-            **kwargs: Arguments passed to complete() (e.g. cache settings)
+            specs: Request specifications.
+            max_concurrency: Override the default concurrency limit for this call
+                (effective only when lower than the engine default).
+            **kwargs: Arguments passed to :meth:`complete` (e.g. cache settings).
 
         Returns:
-            List of CompletionResults in the same order as specs.
+            List of CompletionResults in the same order as ``specs``.
         """
         semaphore = self._semaphore
         if max_concurrency is not None:
@@ -3375,13 +3444,38 @@ class ExecutionEngine:
                         e,
                         provider=spec.provider,
                         model=spec.model,
-                        operation="batch_complete",
+                        operation="concurrent_complete",
                     )
                     return failure_to_completion_result(failure, model=spec.model)
 
         tasks = [asyncio.create_task(_wrapped(s)) for s in specs]
         results = await asyncio.gather(*tasks, return_exceptions=False)
         return results
+
+    async def batch_complete(
+        self,
+        specs: Iterable[RequestSpec],
+        *,
+        max_concurrency: int | None = None,
+        **kwargs: Any,
+    ) -> list[CompletionResult]:
+        """Deprecated alias for :meth:`concurrent_complete`.
+
+        The name ``batch_complete`` is misleading: it suggests provider Batch API
+        semantics (durable jobs and batch discounts) but only performs local bounded
+        concurrency in the standard service tier. Use :meth:`concurrent_complete`.
+        Retained as a behaviorally-identical alias for one deprecation window.
+        """
+        warnings.warn(
+            "ExecutionEngine.batch_complete() is deprecated; use concurrent_complete(). "
+            "It performs local bounded concurrency in the standard service tier with no "
+            "provider Batch API and no batch billing discount.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.concurrent_complete(
+            specs, max_concurrency=max_concurrency, **kwargs
+        )
 
 
 __all__ = ["ExecutionEngine", "FailoverPolicy", "RetryConfig"]

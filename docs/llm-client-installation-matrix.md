@@ -11,6 +11,16 @@ This document defines the supported installation shapes for the standalone
 
 These versions are validated in CI for installation and package smoke checks.
 
+## Provider SDK Versions
+
+| Provider | Supported range | Release-candidate version |
+|---|---|---|
+| OpenAI | `openai>=2.36,<3` | `2.36.0` |
+| Anthropic | `anthropic>=0.104,<1` | `0.104.1` |
+
+The lower bounds match the first SDK versions validated for all `0.4.0`
+provider resources and request parameters.
+
 ## Base Install
 
 Use the base package when you want the core runtime, OpenAI provider path,
@@ -134,5 +144,5 @@ The release/readiness process validates these shapes locally:
 - Observability integrations such as OpenTelemetry and Prometheus remain
   optional extras.
 - A reusable local service stack is available at
-  [docker-compose.llm-client-services.yml](/home/namiral/Projects/Packages/llm-client-v1/docker-compose.llm-client-services.yml)
+  [docker-compose.llm-client-services.yml](../docker-compose.llm-client-services.yml)
   for PostgreSQL, Redis, Qdrant, and MySQL-backed package development.

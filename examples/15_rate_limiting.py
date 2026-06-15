@@ -70,7 +70,9 @@ async def _run_item(
                     "severity, owner, immediate action."
                 ),
                 Message.user(item["prompt"]),
-            ]
+            ],
+            max_tokens=512,
+            reasoning_effort="minimal",
         )
         if result.usage is not None:
             budget.output_tokens = result.usage.output_tokens

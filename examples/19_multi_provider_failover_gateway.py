@@ -186,6 +186,8 @@ async def main() -> None:
         spec = RequestSpec(
             provider="auto",
             model="",
+            max_tokens=512,
+            reasoning_effort="low",
             messages=[
                 Message.system(
                     "You are a gateway response assistant. Answer in 3 bullets with labels: Request Path, Failover Behavior, Final Outcome."

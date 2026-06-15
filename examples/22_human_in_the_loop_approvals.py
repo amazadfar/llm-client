@@ -66,6 +66,8 @@ async def main() -> None:
             RequestSpec(
                 provider=handle.name,
                 model=handle.model,
+                max_tokens=1536,
+                reasoning_effort="minimal" if handle.name == "openai" else "low",
                 messages=[
                     Message.system(
                         "You draft action plans for incident response leads. "
@@ -112,6 +114,8 @@ async def main() -> None:
             RequestSpec(
                 provider=handle.name,
                 model=handle.model,
+                max_tokens=1536,
+                reasoning_effort="minimal" if handle.name == "openai" else "low",
                 messages=[
                     Message.system(
                         "Revise the plan after human review. Respect reviewer notes and highlight what changed. "

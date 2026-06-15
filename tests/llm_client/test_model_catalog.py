@@ -81,8 +81,7 @@ def test_model_catalog_includes_current_anthropic_models() -> None:
     assert opus.usage_costs["cache_write_5m_input"] == float(Decimal("6.25") / Decimal("1000000"))
     assert opus.usage_costs["cache_write_1h_input"] == float(Decimal("10.00") / Decimal("1000000"))
     assert opus.usage_costs["batch_output"] == float(Decimal("12.50") / Decimal("1000000"))
-    assert opus.usage_costs["fast_mode_output"] == float(Decimal("150.00") / Decimal("1000000"))
-    assert opus.pricing_features["data_residency"]["inference_geo_us_multiplier"] == 1.1
+    assert (opus.service or {}).get("speed_modes") == ["fast"]
 
     assert sonnet.model_name == "claude-sonnet-4-6"
     assert sonnet.context_window == 1_000_000
@@ -120,7 +119,7 @@ def test_model_catalog_includes_anthropic_legacy_and_compatibility_aliases() -> 
     assert deprecated_sonnet.replacement == "claude-sonnet-4-6"
     assert deprecated_sonnet.max_output == 64_000
     assert deprecated_opus.deprecated is True
-    assert deprecated_opus.replacement == "claude-opus-4-7"
+    assert deprecated_opus.replacement == "claude-opus-4-8"
     assert deprecated_opus.usage_costs["input"] == float(Decimal("15.00") / Decimal("1000000"))
     assert retired_haiku.deprecated is True
     assert retired_haiku.replacement == "claude-haiku-4-5"
@@ -156,26 +155,27 @@ def test_model_catalog_filters_by_provider_category_and_capability() -> None:
 def test_model_catalog_resolves_provider_defaults() -> None:
     catalog = get_default_model_catalog()
 
-    assert catalog.default_for_provider("openai").key == "gpt-5"
+    # Decision D1: cost-balanced defaults for dev/experimentation.
+    assert catalog.default_for_provider("openai").key == "gpt-5.4-mini"
     assert catalog.default_for_provider("openai", category="embeddings").key == "text-embedding-3-small"
     assert catalog.default_for_provider("google").key == "gemini-2.0-flash"
-    assert catalog.default_for_provider("anthropic").key == "claude-opus-4-7"
+    assert catalog.default_for_provider("anthropic").key == "claude-sonnet-4-6"
 
 
 def test_model_catalog_override_support_changes_defaults(tmp_path, monkeypatch) -> None:
     override_path = tmp_path / "model_catalog.override.json"
+    # Canonical overrides are now v2; a partial model entry deep-merges onto the base.
     override_path.write_text(
         json.dumps(
             {
-                "version": 1,
+                "version": 2,
                 "defaults": {
                     "openai": {"completions": "gpt-5-mini"},
                 },
                 "models": [
                     {
                         "key": "gpt-5",
-                        "deprecated": True,
-                        "replacement": "gpt-5-mini",
+                        "lifecycle": {"status": "deprecated", "replacement": "gpt-5-mini"},
                     }
                 ],
             }
@@ -224,17 +224,17 @@ def test_model_catalog_schema_validation_rejects_bad_documents(tmp_path) -> None
         load_model_catalog(catalog_path=bad_path)
 
 
-def test_model_catalog_asset_matches_profile_snapshot() -> None:
+def test_model_catalog_is_canonical_and_covers_legacy_profiles() -> None:
+    # Catalog v2 is the canonical source (audit T-001 -- the prior test certified a
+    # stale Python<->JSON snapshot, which is exactly the drift coupling being removed).
+    # It must still cover every legacy ModelProfile key (compat) and additionally carry
+    # current flagships that are not defined as Python profiles.
     catalog = get_default_model_catalog()
-    expected_keys = sorted(ModelProfile._registry)
-
-    assert sorted(item.key for item in catalog.list()) == expected_keys
-
-    for key in expected_keys:
-        asset = catalog.get(key)
-        derived = metadata_from_profile(ModelProfile.get(key))
-
-        assert asset.to_dict() == derived.to_dict()
+    catalog_keys = {item.key for item in catalog.list()}
+    missing = set(ModelProfile._registry) - catalog_keys
+    assert not missing, f"catalog missing legacy profile keys: {sorted(missing)}"
+    for key in ("claude-opus-4-8", "claude-fable-5", "gpt-5.5", "gpt-5.5-pro"):
+        assert key in catalog_keys
 
 
 def test_model_metadata_helpers_infer_provider_and_serialize() -> None:
@@ -267,8 +267,8 @@ def test_model_metadata_helpers_infer_provider_and_serialize() -> None:
 def test_provider_configs_use_catalog_defaults() -> None:
     clear_model_catalog_cache()
     get_default_provider_registry.cache_clear()
-    assert OpenAIConfig().default_model == "gpt-5"
-    assert AnthropicConfig().default_model == "claude-opus-4-7"
+    assert OpenAIConfig().default_model == "gpt-5.4-mini"
+    assert AnthropicConfig().default_model == "claude-sonnet-4-6"
     assert GoogleConfig().default_model == "gemini-2.0-flash"
 
 

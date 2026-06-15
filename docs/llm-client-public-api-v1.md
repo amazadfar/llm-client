@@ -71,6 +71,11 @@ Use for:
 - `ToolCall`, `ToolCallDelta`
 - `Usage`
 - `CompletionResult`, `NormalizedOutputItem`, `BackgroundResponseResult`, `DeepResearchRunResult`, `ConversationResource`, `CompactionResult`, `DeletionResult`, `ConversationItemResource`, `ConversationItemsPage`, `EmbeddingResult`
+- `BatchJob`, `BatchRequestItem`, `BatchResultItem`
+- `ModelInfo`, `FileObject`, `ResourcePage`
+- `ContainerResource`, `ContainersPage`, `ContainerFileResource`, `ContainerFilesPage`
+- `SkillResource`, `SkillsPage`, `SkillVersionResource`, `SkillVersionsPage`
+- `VideoResource`, `VideosPage`, `VideoContentResult`, `VideoCharacterResource`
 - `ModerationResult`, `ImageGenerationResult`, `GeneratedImage`, `AudioTranscriptionResult`, `AudioSpeechResult`
 - `FileResource`, `FilesPage`, `FileContentResult`, `UploadResource`, `UploadPartResource`
 - `VectorStoreResource`, `VectorStoresPage`, `VectorStoreSearchResult`, `VectorStoreFileResource`, `VectorStoreFilesPage`, `VectorStoreFileContentResult`, `VectorStoreFileBatchResource`

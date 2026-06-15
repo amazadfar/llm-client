@@ -64,6 +64,14 @@ from __future__ import annotations
 import importlib
 import warnings
 
+try:  # Single source of truth is the installed distribution metadata (pyproject).
+    from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+    from importlib.metadata import version as _dist_version
+
+    __version__ = _dist_version("llm-client")
+except Exception:  # pragma: no cover - fallback when metadata is unavailable
+    __version__ = "0.4.0"
+
 # === Agent Layer ===
 from .agent import (
     Agent,
@@ -246,6 +254,10 @@ from .providers import (
     BaseProvider,
     # Types
     CompletionResult,
+    ContainerFileResource,
+    ContainerFilesPage,
+    ContainerResource,
+    ContainersPage,
     EmbeddingResult,
     GoogleProvider,
     Message,
@@ -254,11 +266,19 @@ from .providers import (
     OpenAIProvider,
     Provider,
     Role,
+    SkillResource,
+    SkillsPage,
+    SkillVersionResource,
+    SkillVersionsPage,
     StreamEvent,
     StreamEventType,
     ToolCall,
     ToolCallDelta,
     Usage,
+    VideoCharacterResource,
+    VideoContentResult,
+    VideoResource,
+    VideosPage,
     normalize_messages,
 )
 
@@ -317,6 +337,10 @@ from .redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
+from .batch_api import BatchJob, BatchRequestItem, BatchResultItem
+from .pricing import ResolvedCost, compute_model_cost, resolve_cost
+from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
+from .resources import FileObject, ModelInfo, ProviderResourceAvailability, ResourcePage
 from .spec import RequestContext, RequestSpec
 
 # === Telemetry ===
@@ -349,6 +373,7 @@ from .tools import (
 )
 
 _STABLE_EXPORTS = [
+    "__version__",
     # Providers
     "Provider",
     "BaseProvider",
@@ -391,6 +416,30 @@ _STABLE_EXPORTS = [
     # Requests / execution
     "RequestContext",
     "RequestSpec",
+    "OpenAIRequestOptions",
+    "AnthropicRequestOptions",
+    "ResolvedCost",
+    "resolve_cost",
+    "compute_model_cost",
+    "BatchJob",
+    "BatchRequestItem",
+    "BatchResultItem",
+    "ModelInfo",
+    "FileObject",
+    "ProviderResourceAvailability",
+    "ResourcePage",
+    "ContainerResource",
+    "ContainersPage",
+    "ContainerFileResource",
+    "ContainerFilesPage",
+    "SkillResource",
+    "SkillsPage",
+    "SkillVersionResource",
+    "SkillVersionsPage",
+    "VideoResource",
+    "VideosPage",
+    "VideoContentResult",
+    "VideoCharacterResource",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",

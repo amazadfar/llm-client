@@ -46,6 +46,7 @@ async def main() -> None:
                 ),
             ],
             config,
+            max_tokens=512,
             reasoning_effort="minimal",
         )
 

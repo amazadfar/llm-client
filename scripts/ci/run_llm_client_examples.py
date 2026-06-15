@@ -40,6 +40,16 @@ CORE_EXAMPLES = [
     "50_openai_mcp_and_connector_workflows.py",
     "51_openai_run_deep_research_staged.py",
     "52_openai_files_api.py",
+    "53_openai_realtime_conversation_lifecycle.py",
+    "54_openai_tool_search_and_namespaces.py",
+    "55_openai_uploads_api.py",
+    "56_openai_realtime_output_collection.py",
+    "57_openai_realtime_push_to_talk.py",
+    "58_openai_vector_store_provisioning.py",
+    "59_openai_realtime_mcp_lifecycle.py",
+    "60_anthropic_thinking_and_structured_outputs.py",
+    "61_anthropic_native_content_cache_and_files.py",
+    "62_provider_batch_apis.py",
 ]
 
 APPLICATION_EXAMPLES = [
@@ -86,6 +96,16 @@ TIMEOUT_OVERRIDES = {
     "50_openai_mcp_and_connector_workflows.py": 120,
     "51_openai_run_deep_research_staged.py": 180,
     "52_openai_files_api.py": 120,
+    "53_openai_realtime_conversation_lifecycle.py": 60,
+    "54_openai_tool_search_and_namespaces.py": 120,
+    "55_openai_uploads_api.py": 120,
+    "56_openai_realtime_output_collection.py": 60,
+    "57_openai_realtime_push_to_talk.py": 90,
+    "58_openai_vector_store_provisioning.py": 180,
+    "59_openai_realtime_mcp_lifecycle.py": 120,
+    "60_anthropic_thinking_and_structured_outputs.py": 120,
+    "61_anthropic_native_content_cache_and_files.py": 120,
+    "62_provider_batch_apis.py": 120,
 }
 
 
@@ -120,6 +140,10 @@ def run_example(script_name: str, timeout_seconds: int) -> None:
     script_path = EXAMPLES_DIR / script_name
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    if env.get("LLM_CLIENT_EXAMPLE_ALLOW_PERSISTENT_RESOURCES") != "1":
+        env["LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE"] = "0"
+        env["LLM_CLIENT_EXAMPLE_KEEP_VECTOR_STORE"] = "0"
+        env["LLM_CLIENT_EXAMPLE_KEEP_ANTHROPIC_FILE"] = "0"
     command = [sys.executable, str(script_path)]
     effective_timeout = max(timeout_seconds, TIMEOUT_OVERRIDES.get(script_name, timeout_seconds))
     print(f"[llm_client examples] running {script_name} timeout={effective_timeout}s", flush=True)

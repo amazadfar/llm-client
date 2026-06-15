@@ -12,10 +12,10 @@ Use this document when you need to answer:
 
 See also:
 
-- [llm-client-public-api-v1.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-public-api-v1.md)
-- [README.md](/home/namiral/Projects/Packages/llm-client-v1/README.md)
-- [llm-client-build-and-recipes-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-build-and-recipes-guide.md)
-- [llm-client-usage-and-capabilities-guide.md](/home/namiral/Projects/Packages/llm-client-v1/docs/llm-client-usage-and-capabilities-guide.md)
+- [llm-client-public-api-v1.md](llm-client-public-api-v1.md)
+- [README.md](../README.md)
+- [llm-client-build-and-recipes-guide.md](llm-client-build-and-recipes-guide.md)
+- [llm-client-usage-and-capabilities-guide.md](llm-client-usage-and-capabilities-guide.md)
 
 ## Stable Module Map
 

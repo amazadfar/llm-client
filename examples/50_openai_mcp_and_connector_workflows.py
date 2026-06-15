@@ -36,6 +36,8 @@ async def main() -> None:
             "Find the latest public OpenAI guidance about using hosted tools.",
             provider_name="openai",
             model=handle.model,
+            max_tokens=768,
+            reasoning_effort="minimal",
             tool_config={"search_context_size": "low"},
         )
         results["web_search"] = {
@@ -48,6 +50,8 @@ async def main() -> None:
                 "Inspect the available remote MCP capabilities and summarize them briefly.",
                 provider_name="openai",
                 model=handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal",
                 server_url=mcp_server_url,
                 server_label=example_env("LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL", "Remote MCP"),
                 authorization=mcp_authorization,
@@ -63,6 +67,8 @@ async def main() -> None:
                 "Use the connector to inspect what data sources are available.",
                 provider_name="openai",
                 model=handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal",
                 connector_id=connector_id,
                 server_label=example_env("LLM_CLIENT_EXAMPLE_CONNECTOR_LABEL", connector_id),
                 authorization=connector_authorization,

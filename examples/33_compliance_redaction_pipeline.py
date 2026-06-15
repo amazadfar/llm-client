@@ -324,6 +324,8 @@ async def main() -> None:
         summary_spec = RequestSpec(
             provider=handle.name,
             model=handle.model,
+            max_tokens=512,
+            reasoning_effort="minimal" if handle.name == "openai" else "low",
             messages=[
                 Message.system(
                     "Write a compliance-safe internal summary with sections: Impact, Confirmed Facts, Next Action. "
@@ -447,6 +449,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
             engine=engine,
             context=RequestContext(session_id=session_id, job_id="structured-compliance-packet"),
             model=handle.model,

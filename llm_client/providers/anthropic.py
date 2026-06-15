@@ -39,9 +39,11 @@ from ..errors import (
     normalize_exception,
     normalize_provider_failure,
 )
+from ..batch_api import BatchJob, BatchRequestItem, BatchResultItem, normalize_batch_status
 from ..hashing import cache_key as compute_cache_key
 from ..rate_limit import Limiter
-from ..tools.base import ToolDefinition, ensure_function_tools_only
+from ..resources import FileObject, ModelInfo, ResourcePage
+from ..tools.base import AnthropicServerTool, ToolDefinition, ensure_function_tools_only
 from .base import BaseProvider
 from .types import (
     CompletionResult,
@@ -305,31 +307,48 @@ class AnthropicProvider(BaseProvider):
 
         return system_message, anthropic_messages
 
-    @staticmethod
     def _content_blocks_to_anthropic_content(
+        self,
         blocks: list[Any],
         *,
         allow_tool_use: bool = False,
     ) -> str | list[dict[str, Any]]:
-        return content_blocks_to_anthropic_content(blocks, allow_tool_use=allow_tool_use)
+        model = getattr(self, "_model", None)
+        return content_blocks_to_anthropic_content(
+            blocks,
+            allow_tool_use=allow_tool_use,
+            supports_images=bool(getattr(model, "vision_input_support", False)),
+            supports_files=bool(getattr(model, "file_input_support", False)),
+        )
 
     @staticmethod
     def _convert_tools_for_anthropic(
         tools: list[ToolDefinition] | None,
     ) -> list[dict[str, Any]] | None:
-        """Convert our Tool format to Anthropic's format."""
-        function_tools = ensure_function_tools_only(tools, provider="anthropic")
-        if not function_tools:
+        """Convert tools to Anthropic's format.
+
+        Executable function tools render to ``{name, description, input_schema}``; native
+        :class:`AnthropicServerTool` descriptors (web_search, code_execution, ...) render to
+        their versioned server-tool dict. OpenAI-native descriptors are rejected.
+        """
+        if not tools:
             return None
 
-        return [
+        server_tools = [tool for tool in tools if isinstance(tool, AnthropicServerTool)]
+        other_tools = [tool for tool in tools if not isinstance(tool, AnthropicServerTool)]
+
+        converted: list[dict[str, Any]] = []
+        function_tools = ensure_function_tools_only(other_tools, provider="anthropic") or []
+        converted.extend(
             {
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.parameters,
             }
             for tool in function_tools
-        ]
+        )
+        converted.extend(tool.to_dict() for tool in server_tools)
+        return converted or None
 
     @staticmethod
     def _extract_tool_calls_from_response(
@@ -370,6 +389,89 @@ class AnthropicProvider(BaseProvider):
 
         text_content = "\n".join(text_parts) if text_parts else None
         return text_content, tool_calls if tool_calls else None
+
+    @staticmethod
+    def _anthropic_block_to_plain(block: Any) -> Any:
+        """Convert an Anthropic SDK content block (or dict) to a plain JSON-able dict."""
+        if isinstance(block, dict):
+            return dict(block)
+        if hasattr(block, "to_dict"):
+            return dict(block.to_dict())
+        if hasattr(block, "model_dump"):
+            return dict(block.model_dump())
+        return {"type": getattr(block, "type", None)}
+
+    # Anthropic server/native tool result block types preserved verbatim in provider_items.
+    _SERVER_TOOL_BLOCK_TYPES = frozenset({
+        "server_tool_use",
+        "web_search_tool_result",
+        "web_fetch_tool_result",
+        "code_execution_tool_result",
+        "bash_code_execution_tool_result",
+        "mcp_tool_use",
+        "mcp_tool_result",
+    })
+
+    def _parse_anthropic_response(self, response: Any) -> dict[str, Any]:
+        """Parse a full Anthropic response, preserving thinking, citations, server tools.
+
+        Returns a dict with text/tool_calls plus lossless rich data: ``reasoning`` (joined
+        thinking text), ``refusal``, ``provider_items`` (signed/redacted thinking, cited
+        text, server-tool blocks), and ``stop_details``.
+        """
+        text_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls: list[ToolCall] = []
+        provider_items: list[dict[str, Any]] = []
+
+        def _attr(block: Any, name: str, default: Any = None) -> Any:
+            if isinstance(block, dict):
+                return block.get(name, default)
+            return getattr(block, name, default)
+
+        for block in getattr(response, "content", None) or []:
+            block_type = _attr(block, "type")
+            if block_type == "text":
+                text = _attr(block, "text", "") or ""
+                text_parts.append(text)
+                citations = _attr(block, "citations")
+                if citations:
+                    provider_items.append(self._anthropic_block_to_plain(block))
+            elif block_type == "thinking":
+                thinking = _attr(block, "thinking", "") or ""
+                reasoning_parts.append(thinking)
+                provider_items.append(
+                    {"type": "thinking", "thinking": thinking, "signature": _attr(block, "signature")}
+                )
+            elif block_type == "redacted_thinking":
+                provider_items.append({"type": "redacted_thinking", "data": _attr(block, "data")})
+            elif block_type == "tool_use":
+                tool_input = _attr(block, "input", {})
+                tool_calls.append(
+                    ToolCall(
+                        id=_attr(block, "id", "") or "",
+                        name=_attr(block, "name", "") or "",
+                        arguments=json.dumps(tool_input) if tool_input else "{}",
+                    )
+                )
+            elif block_type in self._SERVER_TOOL_BLOCK_TYPES:
+                provider_items.append(self._anthropic_block_to_plain(block))
+
+        stop_reason = getattr(response, "stop_reason", None)
+        stop_details_obj = getattr(response, "stop_details", None)
+        stop_details = self._anthropic_block_to_plain(stop_details_obj) if stop_details_obj is not None else None
+        refusal = None
+        if stop_reason == "refusal":
+            refusal = "\n".join(text_parts) if text_parts else "Request declined by the model."
+
+        return {
+            "content": "\n".join(text_parts) if text_parts else None,
+            "tool_calls": tool_calls or None,
+            "reasoning": "\n".join(p for p in reasoning_parts if p) or None,
+            "refusal": refusal,
+            "provider_items": provider_items or None,
+            "stop_details": stop_details,
+        }
 
     @staticmethod
     def _anthropic_usage_to_dict(usage: Any) -> dict[str, Any]:
@@ -419,6 +521,46 @@ class AnthropicProvider(BaseProvider):
         walk(params)
         return "1h" if ttls == {"1h"} else "5m"
 
+    # Source-confirmed prompt-cache prefix minimums (tokens). Opus 4.x and Haiku 4.5 require
+    # 4096; Sonnet 4.6 / Fable 5 and older families use the 2048 default.
+    _SUPPORTED_CACHE_TTLS = frozenset({"5m", "1h"})
+    _DEFAULT_CACHE_MIN_TOKENS = 2048
+    _CACHE_MIN_TOKENS_BY_PREFIX: tuple[tuple[str, int], ...] = (
+        ("claude-opus-4", 4096),
+        ("claude-haiku-4-5", 4096),
+        ("claude-4-5-haiku", 4096),
+    )
+
+    @property
+    def cache_minimum_tokens(self) -> int:
+        """Minimum cached-prefix length (tokens) for this model's prompt caching."""
+        name = str(self.model_name or "")
+        for prefix, minimum in self._CACHE_MIN_TOKENS_BY_PREFIX:
+            if name.startswith(prefix):
+                return minimum
+        return self._DEFAULT_CACHE_MIN_TOKENS
+
+    def _validate_cache_controls(self, params: dict[str, Any]) -> None:
+        """Reject cache-control markers with unsupported TTLs before the network call."""
+
+        def walk(value: Any) -> None:
+            if isinstance(value, dict):
+                cache_control = value.get("cache_control")
+                if isinstance(cache_control, dict):
+                    ttl = cache_control.get("ttl")
+                    if ttl is not None and str(ttl) not in self._SUPPORTED_CACHE_TTLS:
+                        raise ValueError(
+                            f"Unsupported Anthropic cache-control ttl {ttl!r}; "
+                            f"supported values are {sorted(self._SUPPORTED_CACHE_TTLS)}."
+                        )
+                for nested in value.values():
+                    walk(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    walk(nested)
+
+        walk(params)
+
     @staticmethod
     def _apply_usage_pricing_multiplier(usage: Usage, multiplier: float) -> Usage:
         if multiplier == 1.0:
@@ -458,10 +600,163 @@ class AnthropicProvider(BaseProvider):
 
     @staticmethod
     def _sanitize_request_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
-        sanitized = {key: value for key, value in kwargs.items() if value is not None}
-        sanitized.pop("reasoning_effort", None)
-        sanitized.pop("reasoning", None)
-        return sanitized
+        # Generic reasoning controls are now consumed as named parameters and translated
+        # (see _resolve_anthropic_effort); only None-filtering of leftover kwargs remains.
+        return {key: value for key, value in kwargs.items() if value is not None}
+
+    def _resolve_anthropic_effort(
+        self,
+        effort: str | None,
+        reasoning_effort: str | None,
+        reasoning: dict[str, Any] | None,
+    ) -> str | None:
+        """Resolve Anthropic ``output_config.effort``, model-aware.
+
+        An explicit Anthropic ``effort`` wins. Otherwise the generic (OpenAI-style)
+        ``reasoning_effort`` -- or the ``effort`` inside a generic ``reasoning`` object --
+        is translated to Anthropic's effort. The candidate is validated against the
+        model's supported efforts, so an unsupported value (or an effort on a model that
+        has none) raises a clear error instead of being silently dropped (audit A-API-002
+        / A-API-003).
+        """
+        candidate = effort
+        if candidate is None and reasoning_effort is not None:
+            candidate = reasoning_effort
+        if candidate is None and isinstance(reasoning, dict) and reasoning.get("effort"):
+            candidate = reasoning.get("effort")
+        if candidate is None:
+            return None
+        supported = list(getattr(self._model, "reasoning_efforts", []) or [])
+        if not supported:
+            raise ValueError(
+                f"Model {self.model_name!r} does not support a reasoning effort control."
+            )
+        if candidate not in supported:
+            raise ValueError(
+                f"Effort {candidate!r} is not supported by {self.model_name!r}; "
+                f"choose from {supported}."
+            )
+        return candidate
+
+    def _validate_anthropic_speed(self, speed: str) -> None:
+        """Validate fast-mode eligibility from catalog capability metadata."""
+        if speed not in {"standard", "fast"}:
+            raise ValueError("Anthropic speed must be 'standard' or 'fast'.")
+        supported = set((getattr(self._model, "service", None) or {}).get("speed_modes") or [])
+        if speed == "fast" and "fast" not in supported:
+            raise ValueError(
+                f"speed='fast' is not supported by {self.model_name!r}."
+            )
+
+    def _anthropic_messages_resource(self, *, speed: str | None = None) -> Any:
+        """Select the stable or beta Messages resource required by the request."""
+        if speed is not None:
+            return self.client.beta.messages
+        return self.client.messages
+
+    @staticmethod
+    def _apply_fast_mode_beta(params: dict[str, Any], speed: str | None) -> None:
+        if speed is None:
+            return
+        betas = list(params.get("betas") or [])
+        if "fast-mode-2026-02-01" not in betas:
+            betas.append("fast-mode-2026-02-01")
+        params["betas"] = betas
+
+    def _apply_sampling_temperature(
+        self,
+        params: dict[str, Any],
+        temperature: float | None,
+        thinking: dict[str, Any] | None = None,
+    ) -> None:
+        """Apply temperature in a model-aware way.
+
+        Anthropic extended thinking requires temperature to be unset (or exactly ``1``).
+        When thinking is enabled, an explicit incompatible temperature is rejected and the
+        package-level default temperature is omitted rather than injecting a value the
+        model would reject.
+        """
+        thinking_enabled = isinstance(thinking, dict) and thinking.get("type") == "enabled"
+        if temperature is not None:
+            if thinking_enabled and float(temperature) != 1.0:
+                raise ValueError(
+                    "Anthropic extended thinking requires temperature to be unset or 1; "
+                    f"got temperature={temperature}."
+                )
+            params["temperature"] = temperature
+        elif self.default_temperature is not None and not thinking_enabled:
+            params["temperature"] = self.default_temperature
+
+    def _apply_anthropic_request_controls(
+        self,
+        params: dict[str, Any],
+        *,
+        temperature: float | None,
+        thinking: dict[str, Any] | None,
+        effort: str | None,
+        reasoning_effort: str | None,
+        reasoning: dict[str, Any] | None,
+        speed: str | None,
+        service_tier: str | None,
+        top_p: float | None,
+        metadata: dict[str, Any] | None,
+        container: str | None,
+    ) -> None:
+        """Apply Phase 4 request controls (shared and Anthropic-specific) to ``params``.
+
+        Shared by complete() and stream() so both paths validate and translate identically.
+        """
+        resolved_effort = self._resolve_anthropic_effort(effort, reasoning_effort, reasoning)
+        self._apply_sampling_temperature(params, temperature, thinking)
+        if thinking is not None:
+            params["thinking"] = thinking
+        if resolved_effort is not None:
+            output_config = dict(params.get("output_config") or {})
+            output_config["effort"] = resolved_effort
+            params["output_config"] = output_config
+        if speed is not None:
+            self._validate_anthropic_speed(speed)
+            params["speed"] = speed
+        if service_tier is not None:
+            params["service_tier"] = service_tier
+        if top_p is not None:
+            params["top_p"] = top_p
+        if metadata is not None:
+            params["metadata"] = metadata
+        if container is not None:
+            params["container"] = container
+
+    @staticmethod
+    def _resolve_output_format(response_format: str | dict[str, Any] | type | None) -> dict[str, Any] | None:
+        """Translate a response_format request into an Anthropic ``output_config.format`` spec.
+
+        Kept entirely separate from tool input schemas (A-API checklist): structured outputs
+        constrain the *response*, not tool parameters.
+        """
+        if response_format is None:
+            return None
+        if isinstance(response_format, str):
+            return {"type": "json_object"} if response_format in {"json", "json_object"} else None
+        if isinstance(response_format, dict):
+            if response_format.get("type") in {"json_schema", "json_object"}:
+                return dict(response_format)
+            schema = response_format.get("schema") or response_format.get("json_schema")
+            if schema is not None:
+                return {"type": "json_schema", "schema": dict(schema)}
+            if response_format.get("type") == "object" or "properties" in response_format:
+                return {"type": "json_schema", "schema": dict(response_format)}
+            return dict(response_format)
+        schema_fn = getattr(response_format, "model_json_schema", None)
+        if callable(schema_fn):
+            return {"type": "json_schema", "schema": schema_fn()}
+        return None
+
+    def _apply_output_format(self, params: dict[str, Any], response_format: Any) -> None:
+        output_format = self._resolve_output_format(response_format)
+        if output_format is not None:
+            output_config = dict(params.get("output_config") or {})
+            output_config["format"] = output_format
+            params["output_config"] = output_config
 
     async def complete(
         self,
@@ -472,6 +767,15 @@ class AnthropicProvider(BaseProvider):
         temperature: float | None = None,
         max_tokens: int | None = None,
         response_format: str | dict[str, Any] | type | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        thinking: dict[str, Any] | None = None,
+        effort: str | None = None,
+        speed: str | None = None,
+        container: str | None = None,
+        reasoning_effort: str | None = None,
+        reasoning: dict[str, Any] | None = None,
         cache_response: bool = False,
         cache_collection: str | None = None,
         rewrite_cache: bool = False,
@@ -511,10 +815,20 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        if temperature is not None:
-            params["temperature"] = temperature
-        elif self.default_temperature is not None:
-            params["temperature"] = self.default_temperature
+        self._apply_anthropic_request_controls(
+            params,
+            temperature=temperature,
+            thinking=thinking,
+            effort=effort,
+            reasoning_effort=reasoning_effort,
+            reasoning=reasoning,
+            speed=speed,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            container=container,
+        )
+        self._apply_output_format(params, response_format)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -536,6 +850,8 @@ class AnthropicProvider(BaseProvider):
 
         # Add extra kwargs
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._apply_fast_mode_beta(params, speed)
+        self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
@@ -574,10 +890,11 @@ class AnthropicProvider(BaseProvider):
 
         async with self.limiter.limit(tokens=input_tokens, requests=1) as limit_ctx:
             try:
-                response = await self.client.messages.create(**params)
+                response = await self._anthropic_messages_resource(speed=speed).create(**params)
 
-                # Extract content and tool calls
-                text_content, tool_calls = self._extract_tool_calls_from_response(response.content)
+                # Parse the full response: text, tool calls, and rich blocks (thinking,
+                # redacted thinking, citations, server-tool results, refusal, stop details).
+                parsed = self._parse_anthropic_response(response)
 
                 # Parse usage
                 usage = self._parse_anthropic_usage(
@@ -590,9 +907,13 @@ class AnthropicProvider(BaseProvider):
                 limit_ctx.output_tokens = usage.output_tokens
 
                 result = CompletionResult(
-                    content=text_content,
-                    tool_calls=tool_calls,
+                    content=parsed["content"],
+                    tool_calls=parsed["tool_calls"],
                     usage=usage,
+                    reasoning=parsed["reasoning"],
+                    refusal=parsed["refusal"],
+                    provider_items=parsed["provider_items"],
+                    stop_details=parsed["stop_details"],
                     model=self.model_name,
                     finish_reason=response.stop_reason,
                     status=200,
@@ -641,6 +962,15 @@ class AnthropicProvider(BaseProvider):
         temperature: float | None = None,
         max_tokens: int | None = None,
         response_format: str | dict[str, Any] | type | None = None,
+        service_tier: str | None = None,
+        top_p: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        thinking: dict[str, Any] | None = None,
+        effort: str | None = None,
+        speed: str | None = None,
+        container: str | None = None,
+        reasoning_effort: str | None = None,
+        reasoning: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamEvent]:
         """
@@ -679,10 +1009,20 @@ class AnthropicProvider(BaseProvider):
         if system_message:
             params["system"] = system_message
 
-        if temperature is not None:
-            params["temperature"] = temperature
-        elif self.default_temperature is not None:
-            params["temperature"] = self.default_temperature
+        self._apply_anthropic_request_controls(
+            params,
+            temperature=temperature,
+            thinking=thinking,
+            effort=effort,
+            reasoning_effort=reasoning_effort,
+            reasoning=reasoning,
+            speed=speed,
+            service_tier=service_tier,
+            top_p=top_p,
+            metadata=metadata,
+            container=container,
+        )
+        self._apply_output_format(params, response_format)
 
         # Add tools
         anthropic_tools = self._convert_tools_for_anthropic(tools)
@@ -700,6 +1040,8 @@ class AnthropicProvider(BaseProvider):
                     params["tool_choice"] = {"type": "tool", "name": tool_choice}
 
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._apply_fast_mode_beta(params, speed)
+        self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
@@ -721,7 +1063,7 @@ class AnthropicProvider(BaseProvider):
 
         async with self.limiter.limit(tokens=input_tokens, requests=1) as limit_ctx:
             try:
-                async with self.client.messages.stream(**params) as stream:
+                async with self._anthropic_messages_resource(speed=speed).stream(**params) as stream:
                     async for raw_event in stream:
                         event = cast(Any, raw_event)
                         event_type = event.type
@@ -816,6 +1158,16 @@ class AnthropicProvider(BaseProvider):
                                     cache_creation_ttl=cache_creation_ttl,
                                 )
 
+                    # Parse the assembled message for lossless rich blocks (thinking,
+                    # redacted thinking, citations, server-tool results, refusal, stop
+                    # details). Falls back to the streamed buffers if unavailable.
+                    rich: dict[str, Any] = {}
+                    try:
+                        final_message = await stream.get_final_message()
+                        rich = self._parse_anthropic_response(final_message)
+                    except Exception:
+                        rich = {}
+
                 # Build final tool calls list
                 tool_calls = None
                 if tool_calls_buffer:
@@ -834,9 +1186,13 @@ class AnthropicProvider(BaseProvider):
 
                 # Emit final result
                 final_result = CompletionResult(
-                    content=content_buffer if content_buffer else None,
-                    tool_calls=tool_calls,
+                    content=rich.get("content") or (content_buffer if content_buffer else None),
+                    tool_calls=rich.get("tool_calls") or tool_calls,
                     usage=usage,
+                    reasoning=rich.get("reasoning"),
+                    refusal=rich.get("refusal"),
+                    provider_items=rich.get("provider_items"),
+                    stop_details=rich.get("stop_details"),
                     model=self.model_name,
                     finish_reason=finish_reason,
                     status=200,
@@ -879,6 +1235,185 @@ class AnthropicProvider(BaseProvider):
             "Anthropic does not provide an embeddings API. "
             "Consider using OpenAI's text-embedding models or a dedicated embedding service."
         )
+
+    # --- Provider Batch API: Anthropic Message Batches (Phase 6) ---------------------
+    # Durable, discounted batch jobs. Distinct from local concurrency
+    # (ExecutionEngine.concurrent_complete), which bills at standard rates.
+
+    def _batch_job_from_anthropic(self, batch: Any) -> BatchJob:
+        raw_status = getattr(batch, "processing_status", None)
+        counts_obj = getattr(batch, "request_counts", None)
+        counts: dict[str, int] = {}
+        if counts_obj is not None:
+            for name in ("processing", "succeeded", "errored", "canceled", "expired"):
+                value = getattr(counts_obj, name, None)
+                if value is not None:
+                    counts[name] = int(value)
+        return BatchJob(
+            id=getattr(batch, "id", ""),
+            provider="anthropic",
+            status=normalize_batch_status("anthropic", raw_status),
+            raw_status=raw_status,
+            endpoint="messages",
+            request_counts=counts,
+            created_at=getattr(batch, "created_at", None),
+            expires_at=getattr(batch, "expires_at", None),
+            raw=batch,
+        )
+
+    async def create_message_batch(self, requests: list[BatchRequestItem]) -> BatchJob:
+        """Create an Anthropic Message Batch from request items."""
+        payload = [{"custom_id": item.custom_id, "params": dict(item.params)} for item in requests]
+        batch = await self.client.messages.batches.create(requests=payload)
+        return self._batch_job_from_anthropic(batch)
+
+    async def retrieve_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.messages.batches.retrieve(batch_id)
+        return self._batch_job_from_anthropic(batch)
+
+    async def list_batches(self, *, limit: int = 20) -> list[BatchJob]:
+        page = await self.client.messages.batches.list(limit=limit)
+        items = getattr(page, "data", None) or []
+        return [self._batch_job_from_anthropic(batch) for batch in items]
+
+    async def cancel_batch(self, batch_id: str) -> BatchJob:
+        batch = await self.client.messages.batches.cancel(batch_id)
+        return self._batch_job_from_anthropic(batch)
+
+    async def delete_batch(self, batch_id: str) -> None:
+        await self.client.messages.batches.delete(batch_id)
+
+    async def batch_results(self, batch_id: str) -> list[BatchResultItem]:
+        """Retrieve per-item results, preserving custom_ids and per-item errors."""
+        results = await self.client.messages.batches.results(batch_id)
+        items: list[BatchResultItem] = []
+        if hasattr(results, "__aiter__"):
+            async for entry in results:
+                items.append(self._batch_result_item_from_anthropic(entry))
+        else:
+            for entry in results:
+                items.append(self._batch_result_item_from_anthropic(entry))
+        return items
+
+    @staticmethod
+    def _batch_result_item_from_anthropic(entry: Any) -> BatchResultItem:
+        custom_id = getattr(entry, "custom_id", "")
+        result = getattr(entry, "result", None)
+        result_type = getattr(result, "type", None)
+        if result_type == "succeeded":
+            message = getattr(result, "message", None)
+            content = getattr(message, "content", None)
+            usage_obj = getattr(message, "usage", None)
+            usage = usage_obj.to_dict() if hasattr(usage_obj, "to_dict") else None
+            return BatchResultItem(custom_id=custom_id, status="succeeded", content=content, usage=usage, raw=entry)
+        if result_type == "errored":
+            error = getattr(result, "error", None)
+            error_dict = error.to_dict() if hasattr(error, "to_dict") else {"raw": str(error)}
+            return BatchResultItem(custom_id=custom_id, status="errored", error=error_dict, raw=entry)
+        return BatchResultItem(custom_id=custom_id, status=str(result_type or "unknown"), raw=entry)
+
+    # --- Models API ------------------------------------------------------------------
+
+    @staticmethod
+    def _model_info_from_anthropic(model: Any) -> ModelInfo:
+        return ModelInfo(
+            id=str(getattr(model, "id", "") or ""),
+            provider="anthropic",
+            display_name=getattr(model, "display_name", None),
+            created_at=getattr(model, "created_at", None),
+            type=getattr(model, "type", None),
+            raw=model,
+        )
+
+    async def list_models(
+        self,
+        *,
+        limit: int = 20,
+        after_id: str | None = None,
+        before_id: str | None = None,
+    ) -> ResourcePage:
+        """List models available to the account (one page; cursor via after_id/before_id)."""
+        kwargs: dict[str, Any] = {"limit": limit}
+        if after_id is not None:
+            kwargs["after_id"] = after_id
+        if before_id is not None:
+            kwargs["before_id"] = before_id
+        page = await self.client.models.list(**kwargs)
+        data = tuple(self._model_info_from_anthropic(m) for m in getattr(page, "data", []) or [])
+        return ResourcePage(
+            data=data,
+            has_more=bool(getattr(page, "has_more", False)),
+            first_id=getattr(page, "first_id", None),
+            last_id=getattr(page, "last_id", None),
+        )
+
+    async def retrieve_model(self, model_id: str) -> ModelInfo:
+        """Retrieve a single model's metadata."""
+        model = await self.client.models.retrieve(model_id)
+        return self._model_info_from_anthropic(model)
+
+    # --- Files API -------------------------------------------------------------------
+
+    @staticmethod
+    def _file_object_from_anthropic(file: Any) -> FileObject:
+        return FileObject(
+            id=str(getattr(file, "id", "") or ""),
+            provider="anthropic",
+            filename=getattr(file, "filename", None),
+            mime_type=getattr(file, "mime_type", None),
+            size_bytes=getattr(file, "size_bytes", None),
+            created_at=getattr(file, "created_at", None),
+            downloadable=getattr(file, "downloadable", None),
+            raw=file,
+        )
+
+    async def upload_file(self, file: Any) -> FileObject:
+        """Upload a file to the Anthropic Files API (beta)."""
+        uploaded = await self.client.beta.files.upload(file=file)
+        return self._file_object_from_anthropic(uploaded)
+
+    async def list_files(
+        self,
+        *,
+        limit: int = 20,
+        after_id: str | None = None,
+        before_id: str | None = None,
+    ) -> ResourcePage:
+        """List uploaded files (one page; cursor via after_id/before_id)."""
+        kwargs: dict[str, Any] = {"limit": limit}
+        if after_id is not None:
+            kwargs["after_id"] = after_id
+        if before_id is not None:
+            kwargs["before_id"] = before_id
+        page = await self.client.beta.files.list(**kwargs)
+        data = tuple(self._file_object_from_anthropic(f) for f in getattr(page, "data", []) or [])
+        return ResourcePage(
+            data=data,
+            has_more=bool(getattr(page, "has_more", False)),
+            first_id=getattr(page, "first_id", None),
+            last_id=getattr(page, "last_id", None),
+        )
+
+    async def retrieve_file_metadata(self, file_id: str) -> FileObject:
+        """Retrieve metadata for an uploaded file."""
+        file = await self.client.beta.files.retrieve_metadata(file_id)
+        return self._file_object_from_anthropic(file)
+
+    async def download_file(self, file_id: str) -> bytes:
+        """Download the raw bytes of a downloadable file."""
+        response = await self.client.beta.files.download(file_id)
+        if hasattr(response, "read"):
+            data = response.read()
+            return await data if hasattr(data, "__await__") else data
+        if isinstance(response, (bytes, bytearray)):
+            return bytes(response)
+        content = getattr(response, "content", None)
+        return bytes(content) if content is not None else b""
+
+    async def delete_file(self, file_id: str) -> FileObject:
+        """Delete an uploaded file; returns the deletion record."""
+        deleted = await self.client.beta.files.delete(file_id)
+        return self._file_object_from_anthropic(deleted)
 
     async def close(self) -> None:
         """

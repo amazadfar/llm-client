@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from llm_client import (
-    BenchmarkComparisonReport,
     BenchmarkRecorder,
     BenchmarkRecord,
     BenchmarkRunMode,
@@ -24,8 +23,6 @@ from llm_client import (
     build_embeddings_benchmark_case,
     build_stream_benchmark_case,
     build_structured_quality_benchmark_case,
-    compare_benchmark_reports,
-    load_benchmark_report,
     load_env,
     run_benchmarks,
     save_benchmark_report,
@@ -45,7 +42,7 @@ from llm_client.summarization import LLMSummarizer
 load_env()
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_PATH = ROOT / "contracts" / "benchmarks" / "llm_client_deterministic_baseline.v1.json"
+BASELINE_PATH = ROOT / "tests" / "fixtures" / "benchmarks" / "llm_client_rc_semantic_baseline.v1.json"
 ARTIFACT_PATH = ROOT / "tmp" / "cookbook-live-benchmark-report.json"
 
 
@@ -194,33 +191,23 @@ def _suite_summary(records: list[BenchmarkRecord]) -> list[dict[str, Any]]:
     return rows
 
 
-def _comparison_summary(comparison: BenchmarkComparisonReport) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for record in comparison.records:
-        interesting = {
-            key: value
-            for key, value in record.metric_deltas.items()
-            if key
-            in {
-                "avg_completion_latency_ms",
-                "avg_first_token_latency_ms",
-                "avg_full_stream_latency_ms",
-                "avg_embedding_latency_ms",
-                "cache_speedup_ratio",
-                "context_latency_ms",
-                "success_rate",
-                "repaired_success_rate",
-                "avg_latency_ms",
-            }
-        }
-        rows.append(
-            {
-                "name": record.name,
-                "category": record.category.value,
-                "metric_deltas": interesting,
-            }
-        )
-    return rows
+def _semantic_baseline_summary(baseline: dict[str, Any], report: Any) -> dict[str, Any]:
+    baseline_case_names = [str(record.get("name") or "") for record in baseline.get("records", [])]
+    current_case_names = [record.name for record in report.records]
+    shared_case_names = sorted(set(baseline_case_names) & set(current_case_names))
+    return {
+        "baseline_label": baseline.get("label"),
+        "baseline_mode": baseline.get("mode"),
+        "baseline_case_names": baseline_case_names,
+        "current_label": report.metadata.label,
+        "current_mode": report.metadata.mode.value,
+        "current_case_names": current_case_names,
+        "shared_case_names": shared_case_names,
+        "note": (
+            "The checked baseline is the deterministic release-candidate semantic gate. "
+            "This live cookbook run reports timing and quality metrics separately because live provider latency is not deterministic."
+        ),
+    }
 
 
 def _format_speedup_ratio(value: Any) -> str:
@@ -298,6 +285,8 @@ async def main() -> None:
         completion_spec = RequestSpec(
             provider=provider_name,
             model=chat_model,
+            max_tokens=220,
+            reasoning_effort="minimal",
             messages=[
                 Message.system("You are benchmarking completion quality for release operations."),
                 Message.user("Explain, in 3 short bullets, why cache-aware retries help an LLM platform."),
@@ -306,6 +295,8 @@ async def main() -> None:
         stream_spec = RequestSpec(
             provider=provider_name,
             model=chat_model,
+            max_tokens=220,
+            reasoning_effort="minimal",
             messages=[
                 Message.system("You are benchmarking streaming responsiveness."),
                 Message.user("Stream a concise explanation of why observability matters during incident response."),
@@ -314,6 +305,8 @@ async def main() -> None:
         cache_spec = RequestSpec(
             provider=provider_name,
             model=chat_model,
+            max_tokens=180,
+            reasoning_effort="minimal",
             messages=[
                 Message.system("You are benchmarking cacheable support triage generation."),
                 Message.user("Write a short support triage summary for an export-timeout incident."),
@@ -391,8 +384,7 @@ async def main() -> None:
             tags={"provider": provider_name, "model": chat_model},
         )
         artifact_path = save_benchmark_report(report, ARTIFACT_PATH)
-        baseline = load_benchmark_report(BASELINE_PATH)
-        comparison = compare_benchmark_reports(report, baseline)
+        baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
 
         print("\n=== Benchmark Suite ===\n")
         print(
@@ -430,14 +422,10 @@ async def main() -> None:
             )
         )
 
-        print("\n=== Comparison To Deterministic Baseline ===\n")
+        print("\n=== Release Candidate Semantic Baseline ===\n")
         print(
             json.dumps(
-                {
-                    "baseline_label": baseline.metadata.label,
-                    "current_label": report.metadata.label,
-                    "records": _comparison_summary(comparison),
-                },
+                _semantic_baseline_summary(baseline, report),
                 indent=2,
                 ensure_ascii=False,
                 default=str,

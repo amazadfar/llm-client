@@ -67,7 +67,14 @@ async def main() -> None:
         retry_spec = RequestSpec(
             provider=provider_name,
             model=model_name,
-            messages=[Message.user("Explain why retries are useful in LLM infrastructure.")],
+            max_tokens=512,
+            reasoning_effort="minimal",
+            messages=[
+                Message.user(
+                    "Explain why retries are useful in LLM infrastructure in exactly "
+                    "three short bullets and no more than 80 words."
+                )
+            ],
         )
         retry_result = await engine.complete(retry_spec, context=retry_context, idempotency_key="cookbook-live-retry")
 
@@ -76,6 +83,8 @@ async def main() -> None:
         idem_spec = RequestSpec(
             provider=provider_name,
             model=model_name,
+            max_tokens=512,
+            reasoning_effort="minimal",
             messages=[Message.user("Answer with the phrase: idempotency prevents duplicate work.")],
         )
         idem_first = await engine.complete(
@@ -92,6 +101,8 @@ async def main() -> None:
         cache_spec = RequestSpec(
             provider=provider_name,
             model=model_name,
+            max_tokens=512,
+            reasoning_effort="minimal",
             messages=[Message.user("Summarize cache hits in one sentence.")],
         )
         cold_context = RequestContext()
