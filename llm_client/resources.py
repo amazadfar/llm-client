@@ -1,8 +1,8 @@
-"""Shared typed results for provider Models and Files resources (Phase 7).
+"""Shared typed results for provider discovery resources.
 
 These envelopes give the package a stable, provider-neutral shape for the supporting
-Anthropic/OpenAI resources (model discovery, file lifecycle) while preserving the raw
-provider object for callers that need provider-specific fields.
+Anthropic/OpenAI resources while preserving the raw provider object for callers that
+need provider-specific fields.
 """
 
 from __future__ import annotations
@@ -78,4 +78,39 @@ class ResourcePage:
         return self.data[index]
 
 
-__all__ = ["FileObject", "ModelInfo", "ResourcePage"]
+@dataclass(frozen=True)
+class ProviderResourceAvailability:
+    """SDK resource-surface discovery, kept separate from model capabilities.
+
+    ``available`` describes resources exposed by the installed provider SDK. It does
+    not assert that the current account is entitled to use them, nor that a completion
+    model supports a similarly named feature.
+    """
+
+    provider: str
+    sdk_version: str | None
+    available: tuple[str, ...]
+    unavailable: dict[str, str] = field(default_factory=dict)
+    experimental: tuple[str, ...] = ()
+    account_access: str = "unknown"
+
+    def supports(self, resource: str) -> bool:
+        return str(resource) in self.available
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "sdk_version": self.sdk_version,
+            "available": list(self.available),
+            "unavailable": dict(self.unavailable),
+            "experimental": list(self.experimental),
+            "account_access": self.account_access,
+        }
+
+
+__all__ = [
+    "FileObject",
+    "ModelInfo",
+    "ProviderResourceAvailability",
+    "ResourcePage",
+]

@@ -246,6 +246,10 @@ from .providers import (
     BaseProvider,
     # Types
     CompletionResult,
+    ContainerFileResource,
+    ContainerFilesPage,
+    ContainerResource,
+    ContainersPage,
     EmbeddingResult,
     GoogleProvider,
     Message,
@@ -254,11 +258,19 @@ from .providers import (
     OpenAIProvider,
     Provider,
     Role,
+    SkillResource,
+    SkillsPage,
+    SkillVersionResource,
+    SkillVersionsPage,
     StreamEvent,
     StreamEventType,
     ToolCall,
     ToolCallDelta,
     Usage,
+    VideoCharacterResource,
+    VideoContentResult,
+    VideoResource,
+    VideosPage,
     normalize_messages,
 )
 
@@ -320,7 +332,7 @@ from .redaction import (
 from .batch_api import BatchJob, BatchRequestItem, BatchResultItem
 from .pricing import ResolvedCost, compute_model_cost, resolve_cost
 from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
-from .resources import FileObject, ModelInfo, ResourcePage
+from .resources import FileObject, ModelInfo, ProviderResourceAvailability, ResourcePage
 from .spec import RequestContext, RequestSpec
 
 # === Telemetry ===
@@ -405,7 +417,20 @@ _STABLE_EXPORTS = [
     "BatchResultItem",
     "ModelInfo",
     "FileObject",
+    "ProviderResourceAvailability",
     "ResourcePage",
+    "ContainerResource",
+    "ContainersPage",
+    "ContainerFileResource",
+    "ContainerFilesPage",
+    "SkillResource",
+    "SkillsPage",
+    "SkillVersionResource",
+    "SkillVersionsPage",
+    "VideoResource",
+    "VideosPage",
+    "VideoContentResult",
+    "VideoCharacterResource",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",
