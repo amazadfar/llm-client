@@ -168,3 +168,6 @@ uv.lock
 
 backend/.venv/
 *.pyc
+graphify-out
+.codex
+.agents
