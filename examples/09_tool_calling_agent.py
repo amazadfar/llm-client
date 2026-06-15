@@ -5,14 +5,14 @@ import json
 import os
 from typing import Any
 
-from llm_client import Agent, OpenAIProvider, load_env, tool
-from llm_client.agent import AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
+from telic import Agent, OpenAIProvider, load_env, tool
+from telic.agent import AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
 
 load_env()
 
 
 def _allow_skip() -> bool:
-    return os.getenv("LLM_CLIENT_EXAMPLE_ALLOW_SKIP", "0").strip() == "1"
+    return os.getenv("TELIC_EXAMPLE_ALLOW_SKIP", "0").strip() == "1"
 
 
 def _fail_or_skip(message: str) -> None:
@@ -130,7 +130,7 @@ def serialize_turn(turn) -> dict[str, Any]:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

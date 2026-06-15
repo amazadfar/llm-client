@@ -20,11 +20,11 @@ if not require_optional_module("asyncpg", "Install it with: pip install asyncpg"
 
 import asyncpg
 
-from llm_client.persistence import PostgresRepository
-from llm_client.providers.types import Message
+from telic.persistence import PostgresRepository
+from telic.providers.types import Message
 
 
-TABLE_NAME = "llm_client_cookbook_repository"
+TABLE_NAME = "telic_cookbook_repository"
 
 
 def _run_prefix() -> str:
@@ -120,7 +120,7 @@ async def main() -> None:
         except (OSError, asyncpg.PostgresError) as exc:
             fail_or_skip(
                 "The PostgreSQL persistence example could not connect to the configured database. "
-                f"Check LLM_CLIENT_EXAMPLE_PG_DSN and database availability. {type(exc).__name__}: {exc}"
+                f"Check TELIC_EXAMPLE_PG_DSN and database availability. {type(exc).__name__}: {exc}"
             )
         repository = PostgresRepository(pool, compress=True)
         await repository.ensure_table(TABLE_NAME)
@@ -148,7 +148,7 @@ async def main() -> None:
 
         invalid_table_error = None
         try:
-            await repository.ensure_table("llm_client_cookbook_repository;drop")
+            await repository.ensure_table("telic_cookbook_repository;drop")
         except ValueError as exc:
             invalid_table_error = str(exc)
 

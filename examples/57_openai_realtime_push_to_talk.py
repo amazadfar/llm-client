@@ -12,7 +12,7 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 def _chunk_bytes(data: bytes, *, size: int = 16_384) -> list[bytes]:
@@ -20,10 +20,10 @@ def _chunk_bytes(data: bytes, *, size: int = 16_384) -> list[bytes]:
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
-    audio_path = example_env("LLM_CLIENT_EXAMPLE_REALTIME_AUDIO_PATH")
+    model_name = example_env("TELIC_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
+    audio_path = example_env("TELIC_EXAMPLE_REALTIME_AUDIO_PATH")
     if not audio_path:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_REALTIME_AUDIO_PATH to run the realtime push-to-talk example.")
+        fail_or_skip("Set TELIC_EXAMPLE_REALTIME_AUDIO_PATH to run the realtime push-to-talk example.")
     path = Path(audio_path)
     if not path.exists():
         fail_or_skip(f"Realtime audio file not found: {path}")

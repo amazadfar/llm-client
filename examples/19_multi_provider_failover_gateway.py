@@ -14,12 +14,12 @@ from cookbook_support import (
     summarize_usage,
 )
 
-from llm_client.engine import ExecutionEngine, RetryConfig
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.provider_registry import ProviderCapabilities, ProviderDescriptor, ProviderRegistry
-from llm_client.providers.types import CompletionResult, Message
-from llm_client.routing import RegistryRouter
-from llm_client.spec import RequestContext, RequestSpec
+from telic.engine import ExecutionEngine, RetryConfig
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.provider_registry import ProviderCapabilities, ProviderDescriptor, ProviderRegistry
+from telic.providers.types import CompletionResult, Message
+from telic.routing import RegistryRouter
+from telic.spec import RequestContext, RequestSpec
 
 
 @dataclass

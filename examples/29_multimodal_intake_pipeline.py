@@ -8,7 +8,7 @@ from typing import Any
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.content import (
+from telic.content import (
     AudioBlock,
     ContentHandlingMode,
     ContentMessage,
@@ -21,13 +21,13 @@ from llm_client.content import (
     ensure_content_response_envelope,
     project_content_blocks,
 )
-from llm_client.engine import ExecutionEngine
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import CompletionResult, Message, Role, StreamEventType
-from llm_client.redaction import PayloadPreviewMode, RedactionPolicy, preview_payload, sanitize_payload
-from llm_client.spec import RequestContext
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.engine import ExecutionEngine
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import CompletionResult, Message, Role, StreamEventType
+from telic.redaction import PayloadPreviewMode, RedactionPolicy, preview_payload, sanitize_payload
+from telic.spec import RequestContext
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 INTAKE_SCOPE = "multimodal-intake-pipeline"

@@ -23,10 +23,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message
-from llm_client.spec import RequestSpec
-from llm_client.streaming import format_sse_event
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message
+from telic.spec import RequestSpec
+from telic.streaming import format_sse_event
 
 
 class SupportJobRequest(BaseModel):
@@ -190,7 +190,7 @@ async def lifespan(app: FastAPI):
         await close_provider(handle.provider)
 
 
-app = FastAPI(title="llm_client async job queue cookbook", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="telic async job queue cookbook", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/healthz")
@@ -296,7 +296,7 @@ async def stream_job(job_id: str) -> StreamingResponse:
 async def _preview() -> None:
     print("Async job queue SSE app loaded.")
     print("Run with:")
-    print("  uvicorn examples.llm_client.23_async_job_queue_sse:app --reload")
+    print("  uvicorn examples.telic.23_async_job_queue_sse:app --reload")
     print("Submit a job:")
     print(
         "  curl -sS -X POST http://127.0.0.1:8000/v1/jobs/support-brief "

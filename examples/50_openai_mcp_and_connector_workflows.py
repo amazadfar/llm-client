@@ -11,18 +11,18 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-mini") or "gpt-5-mini"
-    connector_id = example_env("LLM_CLIENT_EXAMPLE_CONNECTOR_ID")
-    connector_authorization = example_env("LLM_CLIENT_EXAMPLE_CONNECTOR_AUTHORIZATION")
-    mcp_server_url = example_env("LLM_CLIENT_EXAMPLE_MCP_SERVER_URL")
-    mcp_authorization = example_env("LLM_CLIENT_EXAMPLE_MCP_AUTHORIZATION")
+    model_name = example_env("TELIC_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-mini") or "gpt-5-mini"
+    connector_id = example_env("TELIC_EXAMPLE_CONNECTOR_ID")
+    connector_authorization = example_env("TELIC_EXAMPLE_CONNECTOR_AUTHORIZATION")
+    mcp_server_url = example_env("TELIC_EXAMPLE_MCP_SERVER_URL")
+    mcp_authorization = example_env("TELIC_EXAMPLE_MCP_AUTHORIZATION")
     if not connector_id and not mcp_server_url:
         fail_or_skip(
-            "Set LLM_CLIENT_EXAMPLE_CONNECTOR_ID and/or LLM_CLIENT_EXAMPLE_MCP_SERVER_URL "
+            "Set TELIC_EXAMPLE_CONNECTOR_ID and/or TELIC_EXAMPLE_MCP_SERVER_URL "
             "to run the connector/MCP workflow example."
         )
 
@@ -53,9 +53,9 @@ async def main() -> None:
                 max_tokens=512,
                 reasoning_effort="minimal",
                 server_url=mcp_server_url,
-                server_label=example_env("LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL", "Remote MCP"),
+                server_label=example_env("TELIC_EXAMPLE_MCP_SERVER_LABEL", "Remote MCP"),
                 authorization=mcp_authorization,
-                require_approval=example_env("LLM_CLIENT_EXAMPLE_MCP_REQUIRE_APPROVAL", "never"),
+                require_approval=example_env("TELIC_EXAMPLE_MCP_REQUIRE_APPROVAL", "never"),
             )
             results["remote_mcp"] = {
                 "content": remote_mcp.content,
@@ -70,9 +70,9 @@ async def main() -> None:
                 max_tokens=512,
                 reasoning_effort="minimal",
                 connector_id=connector_id,
-                server_label=example_env("LLM_CLIENT_EXAMPLE_CONNECTOR_LABEL", connector_id),
+                server_label=example_env("TELIC_EXAMPLE_CONNECTOR_LABEL", connector_id),
                 authorization=connector_authorization,
-                require_approval=example_env("LLM_CLIENT_EXAMPLE_CONNECTOR_REQUIRE_APPROVAL", "always"),
+                require_approval=example_env("TELIC_EXAMPLE_CONNECTOR_REQUIRE_APPROVAL", "always"),
             )
             results["connector"] = {
                 "content": connector.content,

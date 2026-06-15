@@ -7,20 +7,20 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from llm_client import ExecutionEngine, Message, OpenAIProvider, RequestSpec, load_env
-from llm_client.context_assembly import (
+from telic import ExecutionEngine, Message, OpenAIProvider, RequestSpec, load_env
+from telic.context_assembly import (
     ContextAssemblyRequest,
     ContextSourcePayload,
     ContextSourceRequest,
     MultiSourceContextAssembler,
 )
-from llm_client.context_planning import (
+from telic.context_planning import (
     DefaultMemoryRetrievalStrategy,
     HeuristicContextPlanner,
     TieredTrimmingStrategy,
 )
-from llm_client.memory import InMemorySummaryStore, MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.summarization import LLMSummarizer
+from telic.memory import InMemorySummaryStore, MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.summarization import LLMSummarizer
 
 load_env()
 
@@ -144,7 +144,7 @@ def _summary_change(previous: str | None, current: str | None) -> dict[str, Any]
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

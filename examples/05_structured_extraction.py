@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 
-from llm_client import (
+from telic import (
     Message,
     OpenAIProvider,
     StructuredOutputConfig,
@@ -16,7 +16,7 @@ load_env()
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider = OpenAIProvider(model=model_name)
     try:
         config = StructuredOutputConfig(

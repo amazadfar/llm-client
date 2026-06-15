@@ -4,8 +4,8 @@ import asyncio
 import json
 import os
 
-from llm_client import ExecutionEngine, OpenAIProvider, Role, load_env
-from llm_client.content import (
+from telic import ExecutionEngine, OpenAIProvider, Role, load_env
+from telic.content import (
     AudioBlock,
     FileBlock,
     MetadataBlock,
@@ -25,7 +25,7 @@ def _print_json(data: object) -> None:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

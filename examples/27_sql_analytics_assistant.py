@@ -11,14 +11,14 @@ from typing import Any
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
-from llm_client.engine import ExecutionEngine
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import Message, StreamEventType, ToolCall, ToolCallDelta
-from llm_client.spec import RequestContext
-from llm_client.structured import StructuredOutputConfig, extract_structured
-from llm_client.tools import Tool, ToolResult
+from telic.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
+from telic.engine import ExecutionEngine
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import Message, StreamEventType, ToolCall, ToolCallDelta
+from telic.spec import RequestContext
+from telic.structured import StructuredOutputConfig, extract_structured
+from telic.tools import Tool, ToolResult
 
 
 ANALYTICS_SCOPE = "sql-analytics-assistant"

@@ -12,12 +12,12 @@ from cookbook_support import (
     summarize_opaque_values,
 )
 
-from llm_client.providers.types import Message
+from telic.providers.types import Message
 
 
 async def main() -> None:
     model_name = (
-        example_env("LLM_CLIENT_EXAMPLE_OPENAI_RESPONSES_MODEL", "gpt-5-mini")
+        example_env("TELIC_EXAMPLE_OPENAI_RESPONSES_MODEL", "gpt-5-mini")
         or "gpt-5-mini"
     )
     handle = build_provider_handle("openai", model_name, use_responses_api=True)

@@ -10,12 +10,12 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
     model_name = (
-        example_env("LLM_CLIENT_EXAMPLE_REALTIME_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
+        example_env("TELIC_EXAMPLE_REALTIME_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
         or "gpt-4o-mini-transcribe"
     )
     handle = build_provider_handle("openai", model_name, use_responses_api=True)

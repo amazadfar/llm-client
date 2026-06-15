@@ -4,13 +4,13 @@ import asyncio
 import json
 import os
 
-from llm_client import ExecutionEngine, OpenAIProvider, load_env
+from telic import ExecutionEngine, OpenAIProvider, load_env
 
 load_env()
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_EMBEDDINGS_MODEL", "text-embedding-3-small")
+    model_name = os.getenv("TELIC_EXAMPLE_EMBEDDINGS_MODEL", "text-embedding-3-small")
     provider = OpenAIProvider(model=model_name)
     try:
         engine = ExecutionEngine(provider=provider)

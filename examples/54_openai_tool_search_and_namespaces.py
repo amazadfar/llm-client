@@ -11,7 +11,7 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.tools import (
+from telic.tools import (
     ResponsesFunctionTool,
     ResponsesToolNamespace,
     ResponsesToolSearch,
@@ -32,10 +32,10 @@ async def billing_quote_refund(invoice_id: str) -> dict[str, str]:
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-mini") or "gpt-5-mini"
+    model_name = example_env("TELIC_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-mini") or "gpt-5-mini"
     handle = build_provider_handle("openai", model_name, use_responses_api=True)
     if handle.name != "openai":
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_PROVIDER=openai to run the OpenAI tool-search example.")
+        fail_or_skip("Set TELIC_EXAMPLE_PROVIDER=openai to run the OpenAI tool-search example.")
 
     try:
         provider = handle.provider
@@ -109,7 +109,7 @@ async def main() -> None:
         if not initial.content and not initial.output_items:
             fail_or_skip(
                 "The selected model returned no tool-search output. "
-                "Set LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL to a compatible Responses model."
+                "Set TELIC_EXAMPLE_OPENAI_TOOLS_MODEL to a compatible Responses model."
             )
     finally:
         await close_provider(handle.provider)

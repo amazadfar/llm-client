@@ -7,7 +7,7 @@ import time
 from collections.abc import Sequence
 from typing import Any
 
-from llm_client import (
+from telic import (
     Message,
     OpenAIProvider,
     Tool,
@@ -18,13 +18,13 @@ from llm_client import (
     ToolResult,
     load_env,
 )
-from llm_client.agent import ToolExecutionMode
+from telic.agent import ToolExecutionMode
 
 load_env()
 
 
 def _allow_skip() -> bool:
-    return os.getenv("LLM_CLIENT_EXAMPLE_ALLOW_SKIP", "0").strip() == "1"
+    return os.getenv("TELIC_EXAMPLE_ALLOW_SKIP", "0").strip() == "1"
 
 
 def _fail_or_skip(message: str) -> None:
@@ -34,7 +34,7 @@ def _fail_or_skip(message: str) -> None:
 
 RELEASE_PACKET = {
     "release_notes": (
-        "Release 2026.03 introduces the llm_client standalone package path, cache policy upgrades, "
+        "Release 2026.03 introduces the telic standalone package path, cache policy upgrades, "
         "security defaults, and cookbook examples. Remaining work includes final extraction cleanup "
         "and one consumer migration pass."
     ),
@@ -291,7 +291,7 @@ def serialize_tool_call(tool_call: ToolCall) -> dict[str, Any]:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider = OpenAIProvider(model=model_name)
     try:
         tools = build_tools()

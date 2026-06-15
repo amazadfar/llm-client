@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 
-from llm_client import (
+from telic import (
     EngineDiagnosticsRecorder,
     ExecutionEngine,
     HookManager,
@@ -15,9 +15,9 @@ from llm_client import (
     RetryConfig,
     load_env,
 )
-from llm_client.cache import CacheCore, CachePolicy
-from llm_client.cache.base import BaseCacheBackend
-from llm_client.idempotency import IdempotencyTracker
+from telic.cache import CacheCore, CachePolicy
+from telic.cache.base import BaseCacheBackend
+from telic.idempotency import IdempotencyTracker
 
 load_env()
 
@@ -50,7 +50,7 @@ class _InMemoryCacheBackend(BaseCacheBackend):
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

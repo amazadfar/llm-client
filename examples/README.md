@@ -1,6 +1,6 @@
-# llm_client Cookbook
+# telic Cookbook
 
-These examples are the runnable cookbook for the standalone `llm_client`
+These examples are the runnable cookbook for the standalone `telic`
 package.
 
 Design goals:
@@ -20,19 +20,19 @@ python examples/01_one_shot_completion.py
 Or run the full live cookbook ring:
 
 ```bash
-python scripts/ci/run_llm_client_examples.py --subset all
+python scripts/ci/run_telic_examples.py --subset all
 ```
 
 Run only the core capability ring:
 
 ```bash
-python scripts/ci/run_llm_client_examples.py --subset core
+python scripts/ci/run_telic_examples.py --subset core
 ```
 
 Run only the application-shaped examples:
 
 ```bash
-python scripts/ci/run_llm_client_examples.py --subset application
+python scripts/ci/run_telic_examples.py --subset application
 ```
 
 The default runner tracks the currently validated cookbook ring. Newly added
@@ -114,7 +114,7 @@ promoted into that default ring, and can be run directly by filename.
 
 ## Combined / Application-Shaped Examples
 
-- `16_fastapi_sse.py`: FastAPI streaming endpoint built on `llm_client`
+- `16_fastapi_sse.py`: FastAPI streaming endpoint built on `telic`
 - `17_persistence_repository.py`: persistence repository dry run and safety
   checks
 - `18_memory_backed_assistant.py`: context planning + memory + engine response
@@ -171,75 +171,75 @@ promoted into that default ring, and can be run directly by filename.
 - Examples that create provider files or vector stores clean them up by
   default. Provider Batch remains dry-run unless explicitly enabled.
 - The suite runner forces cleanup even if a local `.env` contains legacy
-  `KEEP_*` flags. Set `LLM_CLIENT_EXAMPLE_ALLOW_PERSISTENT_RESOURCES=1` only
+  `KEEP_*` flags. Set `TELIC_EXAMPLE_ALLOW_PERSISTENT_RESOURCES=1` only
   when intentionally preserving remote cookbook resources.
 - The OpenAI Responses lifecycle/state examples (`38`-`45`) expect
-  `LLM_CLIENT_EXAMPLE_PROVIDER=openai`.
+  `TELIC_EXAMPLE_PROVIDER=openai`.
 - Additional OpenAI capability examples use:
-  - `LLM_CLIENT_EXAMPLE_REALTIME_MODEL` for example `46`
-  - `LLM_CLIENT_EXAMPLE_REALTIME_TRANSCRIPTION_MODEL` for example `49`
-  - `LLM_CLIENT_EXAMPLE_VECTOR_STORE_ID`,
-    `LLM_CLIENT_EXAMPLE_VECTOR_STORE_FILE_IDS`, and/or
-    `LLM_CLIENT_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS` for example `47`
-  - `LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_MODEL` and
-    `LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_PROMPT` for examples `48` and `51`
-  - `LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_CLARIFICATIONS` and optionally
-    `LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_WAIT=0|1` for example `51`
-  - `LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL` for example `50`
-  - `LLM_CLIENT_EXAMPLE_MCP_SERVER_URL`,
-    `LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL`,
-    `LLM_CLIENT_EXAMPLE_MCP_AUTHORIZATION`,
-    `LLM_CLIENT_EXAMPLE_MCP_REQUIRE_APPROVAL`,
-    `LLM_CLIENT_EXAMPLE_CONNECTOR_ID`,
-    `LLM_CLIENT_EXAMPLE_CONNECTOR_LABEL`,
-    `LLM_CLIENT_EXAMPLE_CONNECTOR_AUTHORIZATION`, and
-    `LLM_CLIENT_EXAMPLE_CONNECTOR_REQUIRE_APPROVAL` for example `50`
-  - `LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH` for example `52`
-  - optionally `LLM_CLIENT_EXAMPLE_FILE_PURPOSE` and
-    `LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE=0|1` for example `52`
+  - `TELIC_EXAMPLE_REALTIME_MODEL` for example `46`
+  - `TELIC_EXAMPLE_REALTIME_TRANSCRIPTION_MODEL` for example `49`
+  - `TELIC_EXAMPLE_VECTOR_STORE_ID`,
+    `TELIC_EXAMPLE_VECTOR_STORE_FILE_IDS`, and/or
+    `TELIC_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS` for example `47`
+  - `TELIC_EXAMPLE_DEEP_RESEARCH_MODEL` and
+    `TELIC_EXAMPLE_DEEP_RESEARCH_PROMPT` for examples `48` and `51`
+  - `TELIC_EXAMPLE_DEEP_RESEARCH_CLARIFICATIONS` and optionally
+    `TELIC_EXAMPLE_DEEP_RESEARCH_WAIT=0|1` for example `51`
+  - `TELIC_EXAMPLE_OPENAI_TOOLS_MODEL` for example `50`
+  - `TELIC_EXAMPLE_MCP_SERVER_URL`,
+    `TELIC_EXAMPLE_MCP_SERVER_LABEL`,
+    `TELIC_EXAMPLE_MCP_AUTHORIZATION`,
+    `TELIC_EXAMPLE_MCP_REQUIRE_APPROVAL`,
+    `TELIC_EXAMPLE_CONNECTOR_ID`,
+    `TELIC_EXAMPLE_CONNECTOR_LABEL`,
+    `TELIC_EXAMPLE_CONNECTOR_AUTHORIZATION`, and
+    `TELIC_EXAMPLE_CONNECTOR_REQUIRE_APPROVAL` for example `50`
+  - `TELIC_EXAMPLE_UPLOAD_FILE_PATH` for example `52`
+  - optionally `TELIC_EXAMPLE_FILE_PURPOSE` and
+    `TELIC_EXAMPLE_KEEP_UPLOADED_FILE=0|1` for example `52`
 - The MCP approval continuation example also expects:
-  - `LLM_CLIENT_EXAMPLE_MCP_PREVIOUS_RESPONSE_ID`
-  - `LLM_CLIENT_EXAMPLE_MCP_APPROVAL_REQUEST_ID`
-  - optionally `LLM_CLIENT_EXAMPLE_MCP_APPROVE=0|1`
+  - `TELIC_EXAMPLE_MCP_PREVIOUS_RESPONSE_ID`
+  - `TELIC_EXAMPLE_MCP_APPROVAL_REQUEST_ID`
+  - optionally `TELIC_EXAMPLE_MCP_APPROVE=0|1`
   - and optionally the same connector / remote-MCP env vars used by example
     `50` when approval continuation needs to resend an auth-bearing tool
     definition
-- Example `53` reuses `LLM_CLIENT_EXAMPLE_REALTIME_MODEL`.
-- Example `54` reuses `LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL`.
-- Example `55` reuses `LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH`.
-- Example `56` reuses `LLM_CLIENT_EXAMPLE_REALTIME_MODEL`.
-- Example `57` reuses `LLM_CLIENT_EXAMPLE_REALTIME_MODEL` and expects
-  `LLM_CLIENT_EXAMPLE_REALTIME_AUDIO_PATH`.
-- Example `58` reuses `LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH` and optionally
-  `LLM_CLIENT_EXAMPLE_KEEP_VECTOR_STORE=0|1`.
-- Example `59` reuses `LLM_CLIENT_EXAMPLE_REALTIME_MODEL`,
-  `LLM_CLIENT_EXAMPLE_MCP_SERVER_URL`,
-  `LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL`,
-  `LLM_CLIENT_EXAMPLE_MCP_AUTHORIZATION`, and optionally
-  `LLM_CLIENT_EXAMPLE_MCP_REQUIRE_APPROVAL`.
-- Example `60` uses `LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL` and optionally
-  `LLM_CLIENT_EXAMPLE_ANTHROPIC_EFFORT`.
-- Example `61` uses `LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL`, optionally
-  `LLM_CLIENT_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH`, and optionally
-  `LLM_CLIENT_EXAMPLE_KEEP_ANTHROPIC_FILE=0|1`.
+- Example `53` reuses `TELIC_EXAMPLE_REALTIME_MODEL`.
+- Example `54` reuses `TELIC_EXAMPLE_OPENAI_TOOLS_MODEL`.
+- Example `55` reuses `TELIC_EXAMPLE_UPLOAD_FILE_PATH`.
+- Example `56` reuses `TELIC_EXAMPLE_REALTIME_MODEL`.
+- Example `57` reuses `TELIC_EXAMPLE_REALTIME_MODEL` and expects
+  `TELIC_EXAMPLE_REALTIME_AUDIO_PATH`.
+- Example `58` reuses `TELIC_EXAMPLE_UPLOAD_FILE_PATH` and optionally
+  `TELIC_EXAMPLE_KEEP_VECTOR_STORE=0|1`.
+- Example `59` reuses `TELIC_EXAMPLE_REALTIME_MODEL`,
+  `TELIC_EXAMPLE_MCP_SERVER_URL`,
+  `TELIC_EXAMPLE_MCP_SERVER_LABEL`,
+  `TELIC_EXAMPLE_MCP_AUTHORIZATION`, and optionally
+  `TELIC_EXAMPLE_MCP_REQUIRE_APPROVAL`.
+- Example `60` uses `TELIC_EXAMPLE_ANTHROPIC_MODEL` and optionally
+  `TELIC_EXAMPLE_ANTHROPIC_EFFORT`.
+- Example `61` uses `TELIC_EXAMPLE_ANTHROPIC_MODEL`, optionally
+  `TELIC_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH`, and optionally
+  `TELIC_EXAMPLE_KEEP_ANTHROPIC_FILE=0|1`.
 - Example `62` is dry-run by default. Set
-  `LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH=1` to create live provider Batch jobs,
-  and optionally set `LLM_CLIENT_EXAMPLE_OPENAI_BATCH_MODEL` /
-  `LLM_CLIENT_EXAMPLE_ANTHROPIC_BATCH_MODEL`.
-- Example `42` uses `LLM_CLIENT_EXAMPLE_OPENAI_REASONING_MODEL` and defaults
+  `TELIC_EXAMPLE_RUN_PROVIDER_BATCH=1` to create live provider Batch jobs,
+  and optionally set `TELIC_EXAMPLE_OPENAI_BATCH_MODEL` /
+  `TELIC_EXAMPLE_ANTHROPIC_BATCH_MODEL`.
+- Example `42` uses `TELIC_EXAMPLE_OPENAI_REASONING_MODEL` and defaults
   to `gpt-5-mini` so encrypted reasoning and visible output both fit within a
   bounded request.
 - You can switch providers with:
-  - `LLM_CLIENT_EXAMPLE_PROVIDER=openai|anthropic|google`
-  - `LLM_CLIENT_EXAMPLE_MODEL=...`
-  - `LLM_CLIENT_EXAMPLE_SECONDARY_PROVIDER=...`
-  - `LLM_CLIENT_EXAMPLE_SECONDARY_MODEL=...`
-  - `LLM_CLIENT_EXAMPLE_EMBEDDINGS_PROVIDER=...`
-  - `LLM_CLIENT_EXAMPLE_EMBEDDINGS_MODEL=...`
-- The persistence example also requires `LLM_CLIENT_EXAMPLE_PG_DSN`.
-- The SQL adaptor examples also require `LLM_CLIENT_EXAMPLE_PG_DSN`.
+  - `TELIC_EXAMPLE_PROVIDER=openai|anthropic|google`
+  - `TELIC_EXAMPLE_MODEL=...`
+  - `TELIC_EXAMPLE_SECONDARY_PROVIDER=...`
+  - `TELIC_EXAMPLE_SECONDARY_MODEL=...`
+  - `TELIC_EXAMPLE_EMBEDDINGS_PROVIDER=...`
+  - `TELIC_EXAMPLE_EMBEDDINGS_MODEL=...`
+- The persistence example also requires `TELIC_EXAMPLE_PG_DSN`.
+- The SQL adaptor examples also require `TELIC_EXAMPLE_PG_DSN`.
 - SQL adaptor examples require the optional PostgreSQL extra:
-  - `pip install llm-client[postgres]`
+  - `pip install telic[postgres]`
 - The retrieval/cache examples that use Qdrant require:
   - `QDRANT_URL=http://127.0.0.1:6333`
   - optionally `QDRANT_API_KEY=...`

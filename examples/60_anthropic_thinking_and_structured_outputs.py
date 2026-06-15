@@ -12,7 +12,7 @@ from cookbook_support import (
     summarize_usage,
 )
 
-from llm_client.providers.types import Message
+from telic.providers.types import Message
 
 
 STRUCTURED_SCHEMA = {
@@ -30,10 +30,10 @@ STRUCTURED_SCHEMA = {
 
 async def main() -> None:
     model_name = (
-        example_env("LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL", "claude-sonnet-4-6")
+        example_env("TELIC_EXAMPLE_ANTHROPIC_MODEL", "claude-sonnet-4-6")
         or "claude-sonnet-4-6"
     )
-    effort = example_env("LLM_CLIENT_EXAMPLE_ANTHROPIC_EFFORT", "low") or "low"
+    effort = example_env("TELIC_EXAMPLE_ANTHROPIC_EFFORT", "low") or "low"
     handle = build_provider_handle("anthropic", model_name)
 
     try:

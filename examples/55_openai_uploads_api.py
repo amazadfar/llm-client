@@ -15,21 +15,21 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_UPLOADS_MODEL", "gpt-5-mini") or "gpt-5-mini"
-    upload_path = example_env("LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH")
+    model_name = example_env("TELIC_EXAMPLE_OPENAI_UPLOADS_MODEL", "gpt-5-mini") or "gpt-5-mini"
+    upload_path = example_env("TELIC_EXAMPLE_UPLOAD_FILE_PATH")
     if not upload_path:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH to run the OpenAI Uploads API example.")
+        fail_or_skip("Set TELIC_EXAMPLE_UPLOAD_FILE_PATH to run the OpenAI Uploads API example.")
 
     source_path = Path(upload_path)
     if not source_path.exists():
         fail_or_skip(f"Upload path does not exist: {source_path}")
 
-    purpose = example_env("LLM_CLIENT_EXAMPLE_FILE_PURPOSE", "assistants") or "assistants"
-    keep_uploaded_file = example_env("LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE", "0") == "1"
+    purpose = example_env("TELIC_EXAMPLE_FILE_PURPOSE", "assistants") or "assistants"
+    keep_uploaded_file = example_env("TELIC_EXAMPLE_KEEP_UPLOADED_FILE", "0") == "1"
     mime_type = mimetypes.guess_type(source_path.name)[0] or "application/octet-stream"
     file_bytes = source_path.read_bytes()
     handle = build_provider_handle("openai", model_name)

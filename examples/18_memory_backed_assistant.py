@@ -7,22 +7,22 @@ from typing import Any
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.context_assembly import (
+from telic.context_assembly import (
     ContextAssemblyRequest,
     ContextSourcePayload,
     ContextSourceRequest,
     MultiSourceContextAssembler,
 )
-from llm_client.context_planning import (
+from telic.context_planning import (
     DefaultMemoryRetrievalStrategy,
     HeuristicContextPlanner,
     TieredTrimmingStrategy,
 )
-from llm_client.engine import ExecutionEngine
-from llm_client.memory import InMemorySummaryStore, MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import Message
-from llm_client.spec import RequestSpec
-from llm_client.summarization import LLMSummarizer
+from telic.engine import ExecutionEngine
+from telic.memory import InMemorySummaryStore, MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import Message
+from telic.spec import RequestSpec
+from telic.summarization import LLMSummarizer
 
 
 THREAD_SCOPE = "assistant:enterprise-escalation"

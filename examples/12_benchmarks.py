@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from llm_client import (
+from telic import (
     BenchmarkRecorder,
     BenchmarkRecord,
     BenchmarkRunMode,
@@ -27,22 +27,22 @@ from llm_client import (
     run_benchmarks,
     save_benchmark_report,
 )
-from llm_client.cache import CacheCore, CachePolicy
-from llm_client.cache.base import BaseCacheBackend
-from llm_client.context_planning import (
+from telic.cache import CacheCore, CachePolicy
+from telic.cache.base import BaseCacheBackend
+from telic.context_planning import (
     ContextPlanningRequest,
     DefaultMemoryRetrievalStrategy,
     HeuristicContextPlanner,
     TieredTrimmingStrategy,
 )
-from llm_client.memory import InMemorySummaryStore, MemoryWrite, ShortTermMemoryStore
-from llm_client.structured_benchmarks import StructuredBenchmarkCase
-from llm_client.summarization import LLMSummarizer
+from telic.memory import InMemorySummaryStore, MemoryWrite, ShortTermMemoryStore
+from telic.structured_benchmarks import StructuredBenchmarkCase
+from telic.summarization import LLMSummarizer
 
 load_env()
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_PATH = ROOT / "tests" / "fixtures" / "benchmarks" / "llm_client_rc_semantic_baseline.v1.json"
+BASELINE_PATH = ROOT / "tests" / "fixtures" / "benchmarks" / "telic_rc_semantic_baseline.v1.json"
 ARTIFACT_PATH = ROOT / "tmp" / "cookbook-live-benchmark-report.json"
 
 
@@ -245,8 +245,8 @@ def _benchmark_event_summary(recorder: BenchmarkRecorder, report: Any) -> dict[s
 
 async def main() -> None:
     provider_name = "openai"
-    chat_model = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
-    embedding_model = os.getenv("LLM_CLIENT_EXAMPLE_EMBEDDINGS_MODEL", "text-embedding-3-small")
+    chat_model = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
+    embedding_model = os.getenv("TELIC_EXAMPLE_EMBEDDINGS_MODEL", "text-embedding-3-small")
     chat_provider = OpenAIProvider(model=chat_model)
     embeddings_provider = OpenAIProvider(model=embedding_model)
 

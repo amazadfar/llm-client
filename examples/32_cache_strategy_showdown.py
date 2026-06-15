@@ -18,15 +18,15 @@ from cookbook_support import (
 )
 from cookbook_expansion_support import qdrant_api_key, require_qdrant_url
 
-from llm_client.cache import CachePolicy
-from llm_client.cache.factory import CacheSettings, build_cache_core
-from llm_client.engine import ExecutionEngine
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.idempotency import IdempotencyTracker
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import CompletionResult, Message, StreamEventType
-from llm_client.spec import RequestContext, RequestSpec
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.cache import CachePolicy
+from telic.cache.factory import CacheSettings, build_cache_core
+from telic.engine import ExecutionEngine
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.idempotency import IdempotencyTracker
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import CompletionResult, Message, StreamEventType
+from telic.spec import RequestContext, RequestSpec
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 CACHE_SCOPE = "cache-strategy-showdown"

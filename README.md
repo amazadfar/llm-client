@@ -1,23 +1,23 @@
-# llm-client
+# telic
 
 **Async LLM + agent runtime kernel for Python.**
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](#)
-[![GitHub stars](https://img.shields.io/github/stars/amazadfar/llm-client?style=social)](https://github.com/amazadfar/llm-client)
+[![GitHub stars](https://img.shields.io/github/stars/amazadfar/telic?style=social)](https://github.com/amazadfar/telic)
 
-`llm-client` sits between your Python application and vendor SDKs. It normalizes OpenAI, Anthropic, and Gemini behind one execution engine with retries, routing, failover, caching, idempotency, and hooks; adds a typed tool and agent runtime; validates structured output with repair; and exposes lifecycle events, redaction, and replay primitives for production debugging. The design choice is framework-level reliability without framework-level opacity. Control flow stays in your application code, not behind a wall of abstractions.
+`telic` sits between your Python application and vendor SDKs. It normalizes OpenAI, Anthropic, and Gemini behind one execution engine with retries, routing, failover, caching, idempotency, and hooks; adds a typed tool and agent runtime; validates structured output with repair; and exposes lifecycle events, redaction, and replay primitives for production debugging. The design choice is framework-level reliability without framework-level opacity. Control flow stays in your application code, not behind a wall of abstractions.
 
 ```python
 import asyncio
 
-from llm_client.config import load_env
-from llm_client.engine import ExecutionEngine, RetryConfig
-from llm_client.observability import EngineDiagnosticsRecorder, HookManager
-from llm_client.providers import OpenAIProvider
-from llm_client.routing import StaticRouter
-from llm_client.types import Message, RequestContext, RequestSpec
+from telic.config import load_env
+from telic.engine import ExecutionEngine, RetryConfig
+from telic.observability import EngineDiagnosticsRecorder, HookManager
+from telic.providers import OpenAIProvider
+from telic.routing import StaticRouter
+from telic.types import Message, RequestContext, RequestSpec
 
 
 async def main() -> None:
@@ -73,41 +73,41 @@ and `ANTHROPIC_API_KEY`.
 
 ## Install
 
-`llm-client` is not yet on PyPI. Install directly from GitHub:
+`telic` is not yet on PyPI. Install directly from GitHub:
 
 ```bash
-pip install "git+https://github.com/amazadfar/llm-client.git"
+pip install "git+https://github.com/amazadfar/telic.git"
 ```
 
 Optional extras for providers, storage, and telemetry:
 
 ```bash
-pip install "llm-client[anthropic] @ git+https://github.com/amazadfar/llm-client.git"
-pip install "llm-client[google] @ git+https://github.com/amazadfar/llm-client.git"
-pip install "llm-client[postgres,redis,qdrant] @ git+https://github.com/amazadfar/llm-client.git"
-pip install "llm-client[telemetry] @ git+https://github.com/amazadfar/llm-client.git"
-pip install "llm-client[all] @ git+https://github.com/amazadfar/llm-client.git"
+pip install "telic[anthropic] @ git+https://github.com/amazadfar/telic.git"
+pip install "telic[google] @ git+https://github.com/amazadfar/telic.git"
+pip install "telic[postgres,redis,qdrant] @ git+https://github.com/amazadfar/telic.git"
+pip install "telic[telemetry] @ git+https://github.com/amazadfar/telic.git"
+pip install "telic[all] @ git+https://github.com/amazadfar/telic.git"
 ```
 
 Or clone and install in editable mode:
 
 ```bash
-git clone https://github.com/amazadfar/llm-client.git
-cd llm-client
+git clone https://github.com/amazadfar/telic.git
+cd telic
 pip install -e ".[all]"
 ```
 
-Requires Python 3.10+ and provider credentials such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`. The full dependency matrix is in [docs/llm-client-installation-matrix.md](docs/llm-client-installation-matrix.md).
+Requires Python 3.10+ and provider credentials such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`. The full dependency matrix is in [docs/telic-installation-matrix.md](docs/telic-installation-matrix.md).
 
 ## Agents and tools
 
 ```python
 import asyncio
 
-from llm_client.agent import Agent
-from llm_client.config import load_env
-from llm_client.providers import OpenAIProvider
-from llm_client.tools import tool
+from telic.agent import Agent
+from telic.config import load_env
+from telic.providers import OpenAIProvider
+from telic.tools import tool
 
 
 @tool
@@ -145,14 +145,14 @@ The full cookbook lives in [examples/](examples/).
 
 ## Documentation
 
-- [Architecture](docs/llm-client-architecture.md)
-- [Public API map](docs/llm-client-public-api-v1.md)
-- [Package API guide](docs/llm-client-package-api-guide.md)
-- [Provider setup](docs/llm-client-provider-setup-guide.md)
-- [Guides and cookbook index](docs/llm-client-guides-index.md)
-- [Installation matrix](docs/llm-client-installation-matrix.md)
-- [Semantic versioning policy](docs/llm-client-semver-policy.md)
-- [Support policy](docs/llm-client-support-policy.md)
+- [Architecture](docs/telic-architecture.md)
+- [Public API map](docs/telic-public-api-v1.md)
+- [Package API guide](docs/telic-package-api-guide.md)
+- [Provider setup](docs/telic-provider-setup-guide.md)
+- [Guides and cookbook index](docs/telic-guides-index.md)
+- [Installation matrix](docs/telic-installation-matrix.md)
+- [Semantic versioning policy](docs/telic-semver-policy.md)
+- [Support policy](docs/telic-support-policy.md)
 
 ## License
 

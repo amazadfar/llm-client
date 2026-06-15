@@ -4,9 +4,9 @@ import asyncio
 
 from cookbook_support import build_live_provider, close_provider, fail_or_skip, print_heading, print_json, summarize_usage
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message, StreamEventType
-from llm_client.spec import RequestSpec
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message, StreamEventType
+from telic.spec import RequestSpec
 
 
 async def _consume_stream(
@@ -45,7 +45,7 @@ async def _consume_stream(
 async def main() -> None:
     handle = build_live_provider(use_responses_api=True)
     if handle.name != "openai":
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_PROVIDER=openai to run the OpenAI background-resume-stream example.")
+        fail_or_skip("Set TELIC_EXAMPLE_PROVIDER=openai to run the OpenAI background-resume-stream example.")
 
     try:
         engine = ExecutionEngine(provider=handle.provider)

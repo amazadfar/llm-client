@@ -12,22 +12,22 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
-from llm_client.tools import ResponsesChunkingStrategy, ResponsesVectorStoreFileSpec
+from telic.engine import ExecutionEngine
+from telic.tools import ResponsesChunkingStrategy, ResponsesVectorStoreFileSpec
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_RETRIEVAL_MODEL", "gpt-5-mini") or "gpt-5-mini"
-    upload_path = example_env("LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH")
+    model_name = example_env("TELIC_EXAMPLE_OPENAI_RETRIEVAL_MODEL", "gpt-5-mini") or "gpt-5-mini"
+    upload_path = example_env("TELIC_EXAMPLE_UPLOAD_FILE_PATH")
     if not upload_path:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_UPLOAD_FILE_PATH to run the vector-store provisioning example.")
+        fail_or_skip("Set TELIC_EXAMPLE_UPLOAD_FILE_PATH to run the vector-store provisioning example.")
 
     source_path = Path(upload_path)
     if not source_path.exists():
         fail_or_skip(f"Upload path does not exist: {source_path}")
 
-    keep_uploaded_file = example_env("LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE", "0") == "1"
-    keep_vector_store = example_env("LLM_CLIENT_EXAMPLE_KEEP_VECTOR_STORE", "0") == "1"
+    keep_uploaded_file = example_env("TELIC_EXAMPLE_KEEP_UPLOADED_FILE", "0") == "1"
+    keep_vector_store = example_env("TELIC_EXAMPLE_KEEP_VECTOR_STORE", "0") == "1"
     handle = build_provider_handle("openai", model_name)
 
     created_file = None

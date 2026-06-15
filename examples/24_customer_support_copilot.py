@@ -7,10 +7,10 @@ from typing import Any
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 from cookbook_expansion_support import QdrantRetriever, RetrieverDocument, chunk_text, embed_text_or_fail
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message
-from llm_client.redaction import RedactionPolicy, sanitize_payload
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message
+from telic.redaction import RedactionPolicy, sanitize_payload
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 HISTORY = [

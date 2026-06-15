@@ -28,10 +28,10 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import CompletionResult, Message, StreamEvent, StreamEventType
-from llm_client.streaming import format_sse_event
-from llm_client.spec import RequestSpec
+from telic.engine import ExecutionEngine
+from telic.providers.types import CompletionResult, Message, StreamEvent, StreamEventType
+from telic.streaming import format_sse_event
+from telic.spec import RequestSpec
 
 
 class IncidentBriefRequest(BaseModel):
@@ -142,7 +142,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="llm_client FastAPI SSE cookbook",
+    title="telic FastAPI SSE cookbook",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -231,7 +231,7 @@ async def _preview() -> None:
     print("FastAPI SSE app loaded for a live incident-brief streaming endpoint.")
     print(f"provider={provider_name} model={model_name}")
     print("Run with:")
-    print("  uvicorn examples.llm_client.16_fastapi_sse:app --reload")
+    print("  uvicorn examples.telic.16_fastapi_sse:app --reload")
     print("Health check:")
     print("  curl -sS http://127.0.0.1:8000/healthz")
     print("Stream request:")

@@ -11,7 +11,7 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.batch_api import BatchRequestItem
+from telic.batch_api import BatchRequestItem
 
 
 def _openai_items(model: str) -> list[BatchRequestItem]:
@@ -47,10 +47,10 @@ def _anthropic_items(model: str) -> list[BatchRequestItem]:
 
 
 async def main() -> None:
-    run_live = example_env("LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH", "0") == "1"
-    openai_model = example_env("LLM_CLIENT_EXAMPLE_OPENAI_BATCH_MODEL", "gpt-5-nano") or "gpt-5-nano"
+    run_live = example_env("TELIC_EXAMPLE_RUN_PROVIDER_BATCH", "0") == "1"
+    openai_model = example_env("TELIC_EXAMPLE_OPENAI_BATCH_MODEL", "gpt-5-nano") or "gpt-5-nano"
     anthropic_model = (
-        example_env("LLM_CLIENT_EXAMPLE_ANTHROPIC_BATCH_MODEL", "claude-sonnet-4-6")
+        example_env("TELIC_EXAMPLE_ANTHROPIC_BATCH_MODEL", "claude-sonnet-4-6")
         or "claude-sonnet-4-6"
     )
     openai_items = _openai_items(openai_model)
@@ -61,7 +61,7 @@ async def main() -> None:
         "openai_requests": [item.to_dict() for item in openai_items],
         "anthropic_requests": [item.to_dict() for item in anthropic_items],
         "note": (
-            "Set LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH=1 to create real provider batch "
+            "Set TELIC_EXAMPLE_RUN_PROVIDER_BATCH=1 to create real provider batch "
             "jobs. Dry-run mode is the default so the cookbook suite does not create "
             "durable remote jobs during routine validation."
         ),
@@ -76,13 +76,13 @@ async def main() -> None:
             openai_job = await openai_handle.provider.create_batch(
                 openai_items,
                 endpoint="responses",
-                metadata={"workflow": "llm-client-cookbook-provider-batch"},
+                metadata={"workflow": "telic-cookbook-provider-batch"},
             )
             anthropic_job = await anthropic_handle.provider.create_message_batch(anthropic_items)
             payload["openai_job"] = openai_job.to_dict()
             payload["anthropic_job"] = anthropic_job.to_dict()
-        elif example_env("LLM_CLIENT_EXAMPLE_REQUIRE_LIVE_BATCH", "0") == "1":
-            fail_or_skip("Set LLM_CLIENT_EXAMPLE_RUN_PROVIDER_BATCH=1 to run live provider Batch APIs.")
+        elif example_env("TELIC_EXAMPLE_REQUIRE_LIVE_BATCH", "0") == "1":
+            fail_or_skip("Set TELIC_EXAMPLE_RUN_PROVIDER_BATCH=1 to run live provider Batch APIs.")
 
         print_heading("Provider Batch APIs")
         print_json(payload)

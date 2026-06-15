@@ -11,15 +11,15 @@ from cookbook_support import (
     summarize_opaque_values,
 )
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message
-from llm_client.spec import RequestSpec
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message
+from telic.spec import RequestSpec
 
 
 async def main() -> None:
     handle = build_live_provider(use_responses_api=True)
     if handle.name != "openai":
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_PROVIDER=openai to run the OpenAI conversation-state example.")
+        fail_or_skip("Set TELIC_EXAMPLE_PROVIDER=openai to run the OpenAI conversation-state example.")
 
     try:
         engine = ExecutionEngine(provider=handle.provider)

@@ -8,15 +8,15 @@ from typing import Any
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.agent.definition import ToolExecutionMode
-from llm_client.engine import ExecutionEngine
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import CompletionResult, Message, StreamEventType, ToolCall
-from llm_client.spec import RequestContext, RequestSpec
-from llm_client.structured import StructuredOutputConfig, extract_structured
-from llm_client.tools.base import Tool, ToolExecutionMetadata, ToolRegistry, ToolResult
-from llm_client.tools.execution_engine import ToolExecutionBatch, ToolExecutionEngine
+from telic.agent.definition import ToolExecutionMode
+from telic.engine import ExecutionEngine
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import CompletionResult, Message, StreamEventType, ToolCall
+from telic.spec import RequestContext, RequestSpec
+from telic.structured import StructuredOutputConfig, extract_structured
+from telic.tools.base import Tool, ToolExecutionMetadata, ToolRegistry, ToolResult
+from telic.tools.execution_engine import ToolExecutionBatch, ToolExecutionEngine
 
 
 PARTIAL_SCOPE = "tool-calling-partial-failures"

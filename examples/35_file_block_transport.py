@@ -6,7 +6,7 @@ from pathlib import Path
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.content import (
+from telic.content import (
     ContentHandlingMode,
     ContentMessage,
     ContentRequestEnvelope,
@@ -18,8 +18,8 @@ from llm_client.content import (
     prepare_file_block,
     project_content_blocks,
 )
-from llm_client.engine import ExecutionEngine
-from llm_client.providers import OpenAIProvider
+from telic.engine import ExecutionEngine
+from telic.providers import OpenAIProvider
 
 
 DEMO_FILE_TEXT = """Release mission control memo
@@ -33,7 +33,7 @@ Recommended next step: cut RC1 after final package docs and artifact verificatio
 
 async def main() -> None:
     handle = build_live_provider()
-    temp_path = Path(tempfile.gettempdir()) / "llm_client_demo_release_bundle.txt"
+    temp_path = Path(tempfile.gettempdir()) / "telic_demo_release_bundle.txt"
     temp_path.write_text(DEMO_FILE_TEXT, encoding="utf-8")
 
     source_file = FileBlock(

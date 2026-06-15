@@ -4,9 +4,9 @@ import json
 import os
 from typing import Any
 
-from llm_client import Conversation, Message, ModelProfile, OpenAIProvider, load_env
-from llm_client.summarization import LLMSummarizer, LLMSummarizerConfig
-from llm_client.sync import get_messages_sync, run_async_sync, summarize_sync
+from telic import Conversation, Message, ModelProfile, OpenAIProvider, load_env
+from telic.summarization import LLMSummarizer, LLMSummarizerConfig
+from telic.sync import get_messages_sync, run_async_sync, summarize_sync
 
 load_env()
 
@@ -106,7 +106,7 @@ async def _capture_guardrail_errors(
 
 
 def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     summarizer = LLMSummarizer(

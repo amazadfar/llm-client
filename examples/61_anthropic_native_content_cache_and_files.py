@@ -13,8 +13,8 @@ from cookbook_support import (
     summarize_usage,
 )
 
-from llm_client.content import FileBlock, TextBlock, content_blocks_to_anthropic_content
-from llm_client.providers.types import Message
+from telic.content import FileBlock, TextBlock, content_blocks_to_anthropic_content
+from telic.providers.types import Message
 
 
 def _page_to_dict(page) -> dict[str, object]:
@@ -28,11 +28,11 @@ def _page_to_dict(page) -> dict[str, object]:
 
 async def main() -> None:
     model_name = (
-        example_env("LLM_CLIENT_EXAMPLE_ANTHROPIC_MODEL", "claude-sonnet-4-6")
+        example_env("TELIC_EXAMPLE_ANTHROPIC_MODEL", "claude-sonnet-4-6")
         or "claude-sonnet-4-6"
     )
-    upload_path = example_env("LLM_CLIENT_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH")
-    keep_uploaded_file = example_env("LLM_CLIENT_EXAMPLE_KEEP_ANTHROPIC_FILE", "0") == "1"
+    upload_path = example_env("TELIC_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH")
+    keep_uploaded_file = example_env("TELIC_EXAMPLE_KEEP_ANTHROPIC_FILE", "0") == "1"
     handle = build_provider_handle("anthropic", model_name)
     uploaded_file = None
     deleted_file = None
@@ -86,7 +86,7 @@ async def main() -> None:
                 "deleted_file": deleted_file.to_dict() if deleted_file else None,
                 "content": result.content,
                 "usage": summarize_usage(result.usage),
-                "note": "File upload is opt-in via LLM_CLIENT_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH.",
+                "note": "File upload is opt-in via TELIC_EXAMPLE_ANTHROPIC_UPLOAD_FILE_PATH.",
             }
         )
         if result.status >= 400 or result.error:

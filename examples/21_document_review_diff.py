@@ -6,8 +6,8 @@ import re
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.providers.types import Message
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.providers.types import Message
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 OLD_DRAFT = """

@@ -12,7 +12,7 @@ Phase 3 of the OpenAI/Anthropic completeness program. The converter:
    dates, aliases/snapshots, service tiers, cache minimums, speed modes, and the
    specific audit corrections).
 
-The output is checked in as ``llm_client/assets/model_catalog.json`` (v2); the prior v1
+The output is checked in as ``telic/assets/model_catalog.json`` (v2); the prior v1
 asset is preserved as ``model_catalog.v1.json`` for the dual-read compatibility window.
 
 Run: ``.venv/bin/python scripts/catalog/build_catalog_v2.py``
@@ -26,7 +26,7 @@ from typing import Any
 
 from catalog_enrichment import DEFAULTS_V2, ENRICHMENT, NEW_MODELS
 
-ASSETS = Path(__file__).resolve().parents[2] / "llm_client" / "assets"
+ASSETS = Path(__file__).resolve().parents[2] / "telic" / "assets"
 V1_PATH = ASSETS / "model_catalog.json"
 V1_PRESERVED_PATH = ASSETS / "model_catalog.v1.json"
 OUT_PATH = ASSETS / "model_catalog.json"

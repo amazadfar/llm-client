@@ -3,19 +3,19 @@ from __future__ import annotations
 import asyncio
 import os
 
-from llm_client import Message, OpenAIProvider, load_env
+from telic import Message, OpenAIProvider, load_env
 
 load_env()
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider = OpenAIProvider(model=model_name)
     try:
         result = await provider.complete(
             messages=[
                 Message.system("You are concise and answer in exactly one sentence."),
-                Message.user("Introduce the llm_client cookbook and mention that this is a live provider call."),
+                Message.user("Introduce the telic cookbook and mention that this is a live provider call."),
             ],
             max_tokens=100,
             temperature=0.1,

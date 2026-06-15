@@ -12,7 +12,7 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 def _csv_env(name: str) -> list[str]:
@@ -23,18 +23,18 @@ def _csv_env(name: str) -> list[str]:
 async def main() -> None:
     handle = build_live_provider()
     if handle.name != "openai":
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_PROVIDER=openai to run the OpenAI vector-store-file-batches example.")
+        fail_or_skip("Set TELIC_EXAMPLE_PROVIDER=openai to run the OpenAI vector-store-file-batches example.")
 
-    vector_store_id = example_env("LLM_CLIENT_EXAMPLE_VECTOR_STORE_ID")
+    vector_store_id = example_env("TELIC_EXAMPLE_VECTOR_STORE_ID")
     if not vector_store_id:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_VECTOR_STORE_ID to run the vector-store file batch example.")
+        fail_or_skip("Set TELIC_EXAMPLE_VECTOR_STORE_ID to run the vector-store file batch example.")
 
-    file_ids = _csv_env("LLM_CLIENT_EXAMPLE_VECTOR_STORE_FILE_IDS")
-    upload_paths = _csv_env("LLM_CLIENT_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS")
+    file_ids = _csv_env("TELIC_EXAMPLE_VECTOR_STORE_FILE_IDS")
+    upload_paths = _csv_env("TELIC_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS")
     if not file_ids and not upload_paths:
         fail_or_skip(
-            "Set LLM_CLIENT_EXAMPLE_VECTOR_STORE_FILE_IDS or "
-            "LLM_CLIENT_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS to run the vector-store file batch example."
+            "Set TELIC_EXAMPLE_VECTOR_STORE_FILE_IDS or "
+            "TELIC_EXAMPLE_VECTOR_STORE_UPLOAD_PATHS to run the vector-store file batch example."
         )
 
     missing_paths = [path for path in upload_paths if not Path(path).exists()]

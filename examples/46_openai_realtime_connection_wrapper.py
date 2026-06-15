@@ -10,11 +10,11 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
+    model_name = example_env("TELIC_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
     handle = build_provider_handle("openai", model_name)
 
     try:

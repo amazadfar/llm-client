@@ -8,7 +8,7 @@ import os
 import uuid
 from typing import Any
 
-from llm_client import (
+from telic import (
     EngineDiagnosticsRecorder,
     ExecutionEngine,
     HookManager,
@@ -31,10 +31,10 @@ from llm_client import (
     sanitize_payload,
     sanitize_tool_output,
 )
-from llm_client.cache import CacheCore, CachePolicy
-from llm_client.cache.base import BaseCacheBackend
-from llm_client.idempotency import IdempotencyTracker
-from llm_client.logging import StructuredLogger
+from telic.cache import CacheCore, CachePolicy
+from telic.cache.base import BaseCacheBackend
+from telic.idempotency import IdempotencyTracker
+from telic.logging import StructuredLogger
 
 load_env()
 
@@ -69,7 +69,7 @@ class _InMemoryCacheBackend(BaseCacheBackend):
 def _make_capturing_logger(policy: RedactionPolicy) -> tuple[StructuredLogger, io.StringIO]:
     stream = io.StringIO()
     logger = StructuredLogger(
-        name=f"llm_client.cookbook.observability.{uuid.uuid4().hex}",
+        name=f"telic.cookbook.observability.{uuid.uuid4().hex}",
         redaction_policy=policy,
     )
     logger._logger.handlers.clear()
@@ -141,7 +141,7 @@ def _select_counters(snapshot: dict[str, Any]) -> dict[str, int]:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://telic/model_catalog.schema.v2.json",
+  "title": "telic model catalog (v2)",
+  "type": "object",
+  "required": ["version", "defaults", "models"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Catalog schema major version. v2 is the canonical structured schema."
+    },
+    "source_manifest": {
+      "type": "object",
+      "description": "Optional provenance for the whole document (overridable per-model).",
+      "additionalProperties": false,
+      "properties": {
+        "fetched_at": {"type": ["string", "null"], "format": "date"},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "provider -> category -> model key. Unchanged shape from v1.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"type": "string", "minLength": 1}
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/model"}
+    }
+  },
+  "$defs": {
+    "isoDate": {"type": ["string", "null"], "format": "date"},
+    "sourceRef": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "url": {"type": ["string", "null"]},
+        "fetched_at": {"$ref": "#/$defs/isoDate"},
+        "note": {"type": ["string", "null"]}
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["key", "provider", "model_name", "category", "lifecycle", "limits", "pricing"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {"type": "string", "minLength": 1, "description": "Canonical, stable lookup key."},
+        "provider": {"type": "string", "minLength": 1},
+        "family": {"type": ["string", "null"], "description": "Grouping label, e.g. 'gpt-5', 'claude-opus'."},
+        "display_name": {"type": ["string", "null"]},
+        "model_name": {"type": "string", "minLength": 1, "description": "Identifier sent on the wire to the provider."},
+        "release_channel": {
+          "type": ["string", "null"],
+          "enum": ["ga", "preview", "experimental", "legacy", null]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "Alternate keys that resolve to this model but remain distinct identities."
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "Dated snapshot identifiers pinned to this model."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["completions", "embeddings", "images", "audio", "moderations", "realtime", "video"]
+        },
+        "encoding": {"type": "string", "minLength": 1, "default": "cl100k_base"},
+
+        "lifecycle": {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {"type": "string", "enum": ["active", "preview", "deprecated", "retired"]},
+            "announced_on": {"$ref": "#/$defs/isoDate"},
+            "deprecated_on": {"$ref": "#/$defs/isoDate"},
+            "retires_on": {"$ref": "#/$defs/isoDate"},
+            "replacement": {"type": ["string", "null"], "description": "Replacement model key."},
+            "source": {"$ref": "#/$defs/sourceRef"}
+          }
+        },
+
+        "endpoints": {
+          "type": "array",
+          "description": "API families this model can be invoked through.",
+          "items": {
+            "type": "string",
+            "enum": ["chat_completions", "responses", "messages", "batch", "embeddings", "images", "audio", "realtime", "video", "moderations"]
+          }
+        },
+
+        "modalities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "input": {"type": "array", "items": {"type": "string", "enum": ["text", "image", "audio", "file", "video"]}},
+            "output": {"type": "array", "items": {"type": "string", "enum": ["text", "image", "audio", "video", "embedding"]}}
+          }
+        },
+
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "context_window": {"type": ["integer", "null"], "minimum": 1},
+            "max_output": {"type": ["integer", "null"], "minimum": 1},
+            "output_dimensions": {"type": ["integer", "null"], "minimum": 1},
+            "source": {"$ref": "#/$defs/sourceRef"},
+            "notes": {"type": ["string", "null"]}
+          }
+        },
+
+        "reasoning": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "supported": {"type": "boolean"},
+            "efforts": {"type": "array", "items": {"type": "string"}},
+            "default_effort": {"type": ["string", "null"]},
+            "incompatible_params": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Sampling/other params disallowed when reasoning/thinking is engaged (e.g. temperature)."
+            }
+          }
+        },
+
+        "caching": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "supported": {"type": "boolean"},
+            "min_cacheable_tokens": {"type": ["integer", "null"], "minimum": 1},
+            "ttls": {"type": "array", "items": {"type": "string"}},
+            "multipliers": {
+              "type": "object",
+              "additionalProperties": {"type": "number"}
+            },
+            "eligibility": {"type": ["string", "null"]}
+          }
+        },
+
+        "service": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "tiers": {"type": "array", "items": {"type": "string"}, "description": "Requestable service tiers."},
+            "speed_modes": {"type": "array", "items": {"type": "string"}, "description": "Provider speed selectors, for example Anthropic fast mode."},
+            "batch_eligible": {"type": "boolean"},
+            "region_modifiers": {"type": "object", "additionalProperties": {"type": "number"}},
+            "availability_notes": {"type": ["string", "null"]}
+          }
+        },
+
+        "tools": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "client_tools": {"type": "boolean", "description": "Function/tool calling support."},
+            "structured_outputs": {"type": "boolean"},
+            "responses_native_tools": {"type": "boolean", "description": "Supports provider-native (server-side) tools on the Responses endpoint."},
+            "provider_native_tools": {"type": "array", "items": {"type": "string"}},
+            "server_tools": {"type": "array", "items": {"type": "string"}},
+            "version_constraints": {"type": "object", "additionalProperties": {"type": "string"}}
+          }
+        },
+
+        "pricing": {
+          "type": "object",
+          "required": ["completeness"],
+          "additionalProperties": false,
+          "properties": {
+            "completeness": {
+              "type": "string",
+              "enum": ["complete", "partial", "unknown"],
+              "description": "complete = every billable dimension known; partial = some known; unknown = none. Unknown is never zero."
+            },
+            "currency": {"type": "string", "default": "USD"},
+            "effective_date": {"$ref": "#/$defs/isoDate"},
+            "source": {"$ref": "#/$defs/sourceRef"},
+            "dimensions": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/pricingDimension"}
+            }
+          }
+        },
+
+        "rate_limits": {
+          "type": ["object", "null"],
+          "description": "Optional, account-sensitive hints. NOT guarantees of provider behavior.",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+
+        "streaming": {"type": "boolean", "default": false}
+      }
+    },
+
+    "pricingDimension": {
+      "type": "object",
+      "required": ["metric", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string",
+          "description": "What is being priced.",
+          "enum": [
+            "input", "output", "cached_input", "cache_read", "cache_write_5m", "cache_write_1h",
+            "input_audio", "output_audio", "input_image", "output_image", "image", "video",
+            "tool_call", "request"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["token", "million_tokens", "image", "second", "request", "character", "minute"]
+        },
+        "mode": {"type": "string", "enum": ["standard", "batch"], "default": "standard"},
+        "tier": {"type": ["string", "null"], "description": "service tier this rate applies to; null = any/standard"},
+        "speed": {"type": ["string", "null"], "description": "speed mode this rate applies to; null = standard speed"},
+        "region": {"type": ["string", "null"], "description": "default | us | eu | ...; null = any"},
+        "threshold": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "Conditional band, e.g. long-context (> N tokens).",
+          "properties": {
+            "min_tokens": {"type": ["integer", "null"], "minimum": 0},
+            "max_tokens": {"type": ["integer", "null"], "minimum": 1}
+          }
+        },
+        "rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Price per `unit`. null means UNKNOWN (must not be treated as zero)."
+        },
+        "effective_date": {"$ref": "#/$defs/isoDate"},
+        "source": {"$ref": "#/$defs/sourceRef"}
+      }
+    }
+  }
+}

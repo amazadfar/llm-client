@@ -12,9 +12,9 @@ from cookbook_support import (
     summarize_usage,
 )
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message
-from llm_client.spec import RequestSpec
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message
+from telic.spec import RequestSpec
 
 
 def _count_reasoning_items_with_encryption(provider_items: list[dict[str, object]] | None) -> int:
@@ -31,7 +31,7 @@ def _count_reasoning_items_with_encryption(provider_items: list[dict[str, object
 
 async def main() -> None:
     model_name = (
-        example_env("LLM_CLIENT_EXAMPLE_OPENAI_REASONING_MODEL", "gpt-5-mini")
+        example_env("TELIC_EXAMPLE_OPENAI_REASONING_MODEL", "gpt-5-mini")
         or "gpt-5-mini"
     )
     handle = build_provider_handle("openai", model_name, use_responses_api=True)

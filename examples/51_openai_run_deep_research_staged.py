@@ -10,24 +10,24 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_MODEL", "o4-mini-deep-research") or "o4-mini-deep-research"
+    model_name = example_env("TELIC_EXAMPLE_DEEP_RESEARCH_MODEL", "o4-mini-deep-research") or "o4-mini-deep-research"
     prompt = example_env(
-        "LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_PROMPT",
+        "TELIC_EXAMPLE_DEEP_RESEARCH_PROMPT",
         (
             "Research the tradeoffs between hosted web search, vector-store retrieval, "
             "and remote MCP servers for enterprise knowledge assistants."
         ),
     ) or ""
     clarifications_raw = example_env(
-        "LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_CLARIFICATIONS",
+        "TELIC_EXAMPLE_DEEP_RESEARCH_CLARIFICATIONS",
         "Focus on enterprise internal knowledge workflows|Include operational risks|Prefer official sources",
     ) or ""
     clarifications = [item.strip() for item in clarifications_raw.split("|") if item.strip()]
-    wait_for_completion = example_env("LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_WAIT", "0") == "1"
+    wait_for_completion = example_env("TELIC_EXAMPLE_DEEP_RESEARCH_WAIT", "0") == "1"
 
     handle = build_provider_handle("openai", model_name, use_responses_api=True)
 

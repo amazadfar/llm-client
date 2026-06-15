@@ -10,11 +10,11 @@ from typing import Any
 
 from cookbook_support import build_live_provider, close_provider, print_heading, print_json, summarize_usage
 
-from llm_client.engine import ExecutionEngine
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.providers.types import CompletionResult, Message, StreamEventType
-from llm_client.redaction import (
+from telic.engine import ExecutionEngine
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.providers.types import CompletionResult, Message, StreamEventType
+from telic.redaction import (
     PayloadPreviewMode,
     ProviderPayloadCaptureMode,
     RedactionPolicy,
@@ -24,8 +24,8 @@ from llm_client.redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
-from llm_client.spec import RequestContext, RequestSpec
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.spec import RequestContext, RequestSpec
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 COMPLIANCE_SCOPE = "compliance-redaction-pipeline"

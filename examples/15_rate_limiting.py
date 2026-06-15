@@ -6,8 +6,8 @@ import os
 import time
 from typing import Any
 
-from llm_client import Message, OpenAIProvider, load_env
-from llm_client.rate_limit import Limiter
+from telic import Message, OpenAIProvider, load_env
+from telic.rate_limit import Limiter
 
 load_env()
 
@@ -143,7 +143,7 @@ def _admission_timeline(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     try:

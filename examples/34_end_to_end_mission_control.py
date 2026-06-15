@@ -22,26 +22,26 @@ from cookbook_support import (
     summarize_usage,
 )
 
-from llm_client.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
-from llm_client.cache import CachePolicy
-from llm_client.cache.factory import CacheSettings, build_cache_core
-from llm_client.context_assembly import (
+from telic.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
+from telic.cache import CachePolicy
+from telic.cache.factory import CacheSettings, build_cache_core
+from telic.context_assembly import (
     ContextAssemblyRequest,
     ContextSourcePayload,
     ContextSourceRequest,
     MultiSourceContextAssembler,
 )
-from llm_client.context_planning import (
+from telic.context_planning import (
     DefaultMemoryRetrievalStrategy,
     HeuristicContextPlanner,
     TieredTrimmingStrategy,
 )
-from llm_client.conversation import Conversation
-from llm_client.engine import ExecutionEngine, RetryConfig
-from llm_client.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
-from llm_client.idempotency import IdempotencyTracker
-from llm_client.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
-from llm_client.observability import (
+from telic.conversation import Conversation
+from telic.engine import ExecutionEngine, RetryConfig
+from telic.hooks import EngineDiagnosticsRecorder, HookManager, LifecycleRecorder
+from telic.idempotency import IdempotencyTracker
+from telic.memory import MemoryQuery, MemoryWrite, ShortTermMemoryStore
+from telic.observability import (
     ActionEvent,
     ArtifactEvent,
     FinalEvent,
@@ -52,9 +52,9 @@ from llm_client.observability import (
     RuntimeEventType,
     ToolEvent,
 )
-from llm_client.provider_registry import ProviderCapabilities, ProviderDescriptor, ProviderRegistry
-from llm_client.providers.types import CompletionResult, Message, StreamEventType, ToolCall
-from llm_client.redaction import (
+from telic.provider_registry import ProviderCapabilities, ProviderDescriptor, ProviderRegistry
+from telic.providers.types import CompletionResult, Message, StreamEventType, ToolCall
+from telic.redaction import (
     PayloadPreviewMode,
     ProviderPayloadCaptureMode,
     RedactionPolicy,
@@ -65,11 +65,11 @@ from llm_client.redaction import (
     sanitize_payload,
     sanitize_tool_output,
 )
-from llm_client.routing import RegistryRouter
-from llm_client.spec import RequestContext, RequestSpec
-from llm_client.structured import StructuredOutputConfig, extract_structured
-from llm_client.summarization import LLMSummarizer
-from llm_client.tools import Tool
+from telic.routing import RegistryRouter
+from telic.spec import RequestContext, RequestSpec
+from telic.structured import StructuredOutputConfig, extract_structured
+from telic.summarization import LLMSummarizer
+from telic.tools import Tool
 
 
 MISSION_SCOPE = "end-to-end-mission-control"
@@ -314,7 +314,7 @@ def _truncate(value: Any, max_chars: int = 240) -> str:
 
 
 def _debug(message: str) -> None:
-    if os.getenv("LLM_CLIENT_MISSION_DEBUG") == "1":
+    if os.getenv("TELIC_MISSION_DEBUG") == "1":
         print(f"[mission-debug] {message}", flush=True)
 
 
@@ -1127,7 +1127,7 @@ async def main() -> None:
         event_bus,
         metadata=RunMetadata.create(
             runtime_version="cookbook",
-            llm_client_version="local",
+            telic_version="local",
             model_version=chat_handle.model,
             config={"scenario": "mission_control"},
             policy=_mission_policy_snapshot(),

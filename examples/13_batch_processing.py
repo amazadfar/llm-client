@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from llm_client import ExecutionEngine, Message, OpenAIProvider, RequestSpec, load_env
-from llm_client.batch_req import BatchManager
+from telic import ExecutionEngine, Message, OpenAIProvider, RequestSpec, load_env
+from telic.batch_req import BatchManager
 
 load_env()
 
@@ -155,7 +155,7 @@ def infer_routing_owner(batch_item: dict[str, Any], model_excerpt: str) -> str:
 
 
 async def main() -> None:
-    model_name = os.getenv("LLM_CLIENT_EXAMPLE_MODEL", "gpt-5-nano")
+    model_name = os.getenv("TELIC_EXAMPLE_MODEL", "gpt-5-nano")
     provider_name = "openai"
     provider = OpenAIProvider(model=model_name)
     CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)

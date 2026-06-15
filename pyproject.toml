@@ -3,17 +3,17 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "llm-client"
+name = "telic"
 version = "0.4.0"
 description = "Standalone async-first LLM runtime framework with providers, engine, agents, tools, context, cache, observability, and benchmarks."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [
-  { name = "llm-client maintainers" },
+  { name = "telic maintainers" },
 ]
 maintainers = [
-  { name = "llm-client maintainers" },
+  { name = "telic maintainers" },
 ]
 keywords = [
   "llm",
@@ -80,7 +80,7 @@ qdrant = [
   "qdrant-client>=1.15,<2",
 ]
 adapters = [
-  "llm-client[postgres,mysql,redis,qdrant]",
+  "telic[postgres,mysql,redis,qdrant]",
 ]
 telemetry = [
   "opentelemetry-api>=1.39,<2",
@@ -108,15 +108,15 @@ dev = [
   "respx>=0.22,<1",
 ]
 all = [
-  "llm-client[anthropic,google,postgres,mysql,redis,qdrant,telemetry,performance,server,dev]",
+  "telic[anthropic,google,postgres,mysql,redis,qdrant,telemetry,performance,server,dev]",
 ]
 
 [project.urls]
-Documentation = "https://github.com/amazadfar/llm-client/tree/main/docs"
-Repository = "https://github.com/amazadfar/llm-client"
+Documentation = "https://github.com/amazadfar/telic/tree/main/docs"
+Repository = "https://github.com/amazadfar/telic"
 
 [tool.setuptools.packages.find]
-include = ["llm_client*"]
+include = ["telic*"]
 
 [tool.setuptools.package-data]
-llm_client = ["assets/*.json", "py.typed"]
+telic = ["assets/*.json", "py.typed"]

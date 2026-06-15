@@ -14,13 +14,13 @@ from cookbook_support import (
     summarize_usage,
 )
 
-if not require_optional_module("asyncpg", "Install it with: pip install llm-client[postgres]"):
+if not require_optional_module("asyncpg", "Install it with: pip install telic[postgres]"):
     raise SystemExit(0)
 
 import asyncpg
 
-from llm_client.adapters import PostgresSQLAdaptor, SQLMutationRequest, build_sql_query_tool
-from llm_client.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
+from telic.adapters import PostgresSQLAdaptor, SQLMutationRequest, build_sql_query_tool
+from telic.agent import Agent, AgentDefinition, AgentExecutionPolicy, ToolExecutionMode
 
 
 def _serialize_turn(turn: Any) -> dict[str, Any]:
@@ -54,7 +54,7 @@ async def main() -> None:
         await close_provider(handle.provider)
         fail_or_skip(
             "Could not connect to PostgreSQL for the SQL adaptor tool example. "
-            f"Check LLM_CLIENT_EXAMPLE_PG_DSN and database availability. {type(exc).__name__}: {exc}"
+            f"Check TELIC_EXAMPLE_PG_DSN and database availability. {type(exc).__name__}: {exc}"
         )
         return
     try:

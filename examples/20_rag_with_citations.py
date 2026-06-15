@@ -12,10 +12,10 @@ from cookbook_support import (
 )
 from cookbook_expansion_support import QdrantRetriever, RetrieverDocument, chunk_text, embed_text_or_fail, excerpt
 
-from llm_client.engine import ExecutionEngine
-from llm_client.providers.types import Message
-from llm_client.spec import RequestSpec
-from llm_client.structured import StructuredOutputConfig, extract_structured
+from telic.engine import ExecutionEngine
+from telic.providers.types import Message
+from telic.spec import RequestSpec
+from telic.structured import StructuredOutputConfig, extract_structured
 
 
 CORPUS = [

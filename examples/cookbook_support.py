@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from llm_client.config import load_env
-from llm_client.providers import AnthropicProvider, GoogleProvider, OpenAIProvider
+from telic.config import load_env
+from telic.providers import AnthropicProvider, GoogleProvider, OpenAIProvider
 
 
 load_env()
@@ -83,7 +83,7 @@ def example_env(name: str, default: str | None = None) -> str | None:
 
 
 def allow_skip() -> bool:
-    return example_env("LLM_CLIENT_EXAMPLE_ALLOW_SKIP", "0") == "1"
+    return example_env("TELIC_EXAMPLE_ALLOW_SKIP", "0") == "1"
 
 
 def fail_or_skip(message: str) -> None:
@@ -92,21 +92,21 @@ def fail_or_skip(message: str) -> None:
 
 
 def require_database_dsn() -> str | None:
-    dsn = example_env("LLM_CLIENT_EXAMPLE_PG_DSN")
+    dsn = example_env("TELIC_EXAMPLE_PG_DSN")
     if not dsn:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_PG_DSN to run this example against PostgreSQL.")
+        fail_or_skip("Set TELIC_EXAMPLE_PG_DSN to run this example against PostgreSQL.")
     return dsn
 
 
 def _capability_provider_env(capability: str, *, secondary: bool) -> tuple[str, str]:
     if capability == "embeddings":
         return (
-            "LLM_CLIENT_EXAMPLE_SECONDARY_EMBEDDINGS_PROVIDER" if secondary else "LLM_CLIENT_EXAMPLE_EMBEDDINGS_PROVIDER",
-            "LLM_CLIENT_EXAMPLE_SECONDARY_EMBEDDINGS_MODEL" if secondary else "LLM_CLIENT_EXAMPLE_EMBEDDINGS_MODEL",
+            "TELIC_EXAMPLE_SECONDARY_EMBEDDINGS_PROVIDER" if secondary else "TELIC_EXAMPLE_EMBEDDINGS_PROVIDER",
+            "TELIC_EXAMPLE_SECONDARY_EMBEDDINGS_MODEL" if secondary else "TELIC_EXAMPLE_EMBEDDINGS_MODEL",
         )
     return (
-        "LLM_CLIENT_EXAMPLE_SECONDARY_PROVIDER" if secondary else "LLM_CLIENT_EXAMPLE_PROVIDER",
-        "LLM_CLIENT_EXAMPLE_SECONDARY_MODEL" if secondary else "LLM_CLIENT_EXAMPLE_MODEL",
+        "TELIC_EXAMPLE_SECONDARY_PROVIDER" if secondary else "TELIC_EXAMPLE_PROVIDER",
+        "TELIC_EXAMPLE_SECONDARY_MODEL" if secondary else "TELIC_EXAMPLE_MODEL",
     )
 
 
@@ -117,11 +117,11 @@ def resolve_provider_name(*, capability: str = "chat", secondary: bool = False) 
     if capability == "embeddings" and provider_name not in EMBEDDING_MODEL_DEFAULTS:
         fail_or_skip(
             "Embeddings examples require a provider with embedding support. "
-            "Use openai or google via LLM_CLIENT_EXAMPLE_EMBEDDINGS_PROVIDER."
+            "Use openai or google via TELIC_EXAMPLE_EMBEDDINGS_PROVIDER."
         )
     if capability != "embeddings" and provider_name not in CHAT_MODEL_DEFAULTS:
         fail_or_skip(
-            "Unsupported example provider. Set LLM_CLIENT_EXAMPLE_PROVIDER to one of: "
+            "Unsupported example provider. Set TELIC_EXAMPLE_PROVIDER to one of: "
             "openai, anthropic, google."
         )
     return provider_name
@@ -153,7 +153,7 @@ def build_provider_handle(
     provider_name = provider_name.strip().lower()
     if provider_name == "openai":
         if not example_env("OPENAI_API_KEY"):
-            fail_or_skip("Set OPENAI_API_KEY to run the llm_client cookbook against OpenAI.")
+            fail_or_skip("Set OPENAI_API_KEY to run the telic cookbook against OpenAI.")
         return LiveProviderHandle(
             name="openai",
             model=model_name,
@@ -161,7 +161,7 @@ def build_provider_handle(
         )
     if provider_name == "anthropic":
         if not example_env("ANTHROPIC_API_KEY"):
-            fail_or_skip("Set ANTHROPIC_API_KEY to run the llm_client cookbook against Anthropic.")
+            fail_or_skip("Set ANTHROPIC_API_KEY to run the telic cookbook against Anthropic.")
         return LiveProviderHandle(
             name="anthropic",
             model=model_name,
@@ -169,7 +169,7 @@ def build_provider_handle(
         )
     if provider_name == "google":
         if not (example_env("GEMINI_API_KEY") or example_env("GOOGLE_API_KEY")):
-            fail_or_skip("Set GEMINI_API_KEY or GOOGLE_API_KEY to run the llm_client cookbook against Google.")
+            fail_or_skip("Set GEMINI_API_KEY or GOOGLE_API_KEY to run the telic cookbook against Google.")
         return LiveProviderHandle(
             name="google",
             model=model_name,
@@ -188,7 +188,7 @@ def build_live_provider(
     provider_name = resolve_provider_name(capability=capability, secondary=secondary)
     model_name = resolve_model_name(provider_name, capability=capability, secondary=secondary)
     if provider_name == "anthropic" and capability == "embeddings":
-        fail_or_skip("Anthropic does not provide embeddings in llm_client. Use OpenAI or Google.")
+        fail_or_skip("Anthropic does not provide embeddings in telic. Use OpenAI or Google.")
     return build_provider_handle(provider_name, model_name, use_responses_api=use_responses_api)
 
 

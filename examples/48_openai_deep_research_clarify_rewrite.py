@@ -10,13 +10,13 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
+from telic.engine import ExecutionEngine
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_MODEL", "o4-mini-deep-research") or "o4-mini-deep-research"
+    model_name = example_env("TELIC_EXAMPLE_DEEP_RESEARCH_MODEL", "o4-mini-deep-research") or "o4-mini-deep-research"
     prompt = example_env(
-        "LLM_CLIENT_EXAMPLE_DEEP_RESEARCH_PROMPT",
+        "TELIC_EXAMPLE_DEEP_RESEARCH_PROMPT",
         (
             "Research the current enterprise tradeoffs between vector-store retrieval, "
             "remote MCP connectors, and direct function tools for internal knowledge workflows."

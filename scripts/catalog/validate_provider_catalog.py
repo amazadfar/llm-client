@@ -22,7 +22,7 @@ from build_catalog_v2 import build
 
 
 ROOT = Path(__file__).resolve().parents[2]
-ASSETS = ROOT / "llm_client" / "assets"
+ASSETS = ROOT / "telic" / "assets"
 CATALOG_PATH = ASSETS / "model_catalog.json"
 SCHEMA_PATH = ASSETS / "model_catalog.schema.v2.json"
 MANIFEST_PATH = ASSETS / "provider_source_manifest.json"
@@ -184,7 +184,7 @@ def validate_online_sources(manifest: dict[str, Any], *, timeout: float) -> None
     for source in manifest["sources"]:
         request = Request(
             source["url"],
-            headers={"User-Agent": "llm-client-catalog-validator/0.4"},
+            headers={"User-Agent": "telic-catalog-validator/0.4"},
         )
         try:
             with urlopen(request, timeout=timeout) as response:

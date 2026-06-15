@@ -11,15 +11,15 @@ from cookbook_support import (
     print_json,
 )
 
-from llm_client.engine import ExecutionEngine
-from llm_client.tools import ResponsesMCPTool
+from telic.engine import ExecutionEngine
+from telic.tools import ResponsesMCPTool
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
-    server_url = example_env("LLM_CLIENT_EXAMPLE_MCP_SERVER_URL")
+    model_name = example_env("TELIC_EXAMPLE_REALTIME_MODEL", "gpt-realtime") or "gpt-realtime"
+    server_url = example_env("TELIC_EXAMPLE_MCP_SERVER_URL")
     if not server_url:
-        fail_or_skip("Set LLM_CLIENT_EXAMPLE_MCP_SERVER_URL to run the realtime MCP lifecycle example.")
+        fail_or_skip("Set TELIC_EXAMPLE_MCP_SERVER_URL to run the realtime MCP lifecycle example.")
 
     handle = build_provider_handle("openai", model_name)
     try:
@@ -38,9 +38,9 @@ async def main() -> None:
         try:
             tool = ResponsesMCPTool.remote_server(
                 server_url,
-                server_label=example_env("LLM_CLIENT_EXAMPLE_MCP_SERVER_LABEL", "Remote MCP"),
-                authorization=example_env("LLM_CLIENT_EXAMPLE_MCP_AUTHORIZATION"),
-                require_approval=example_env("LLM_CLIENT_EXAMPLE_MCP_REQUIRE_APPROVAL", "never"),
+                server_label=example_env("TELIC_EXAMPLE_MCP_SERVER_LABEL", "Remote MCP"),
+                authorization=example_env("TELIC_EXAMPLE_MCP_AUTHORIZATION"),
+                require_approval=example_env("TELIC_EXAMPLE_MCP_REQUIRE_APPROVAL", "never"),
             )
             await connection.update_session_tools(
                 [tool],
