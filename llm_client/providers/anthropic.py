@@ -42,6 +42,7 @@ from ..errors import (
 from ..batch_api import BatchJob, BatchRequestItem, BatchResultItem, normalize_batch_status
 from ..hashing import cache_key as compute_cache_key
 from ..rate_limit import Limiter
+from ..resources import FileObject, ModelInfo, ResourcePage
 from ..tools.base import ToolDefinition, ensure_function_tools_only
 from .base import BaseProvider
 from .types import (
@@ -306,13 +307,19 @@ class AnthropicProvider(BaseProvider):
 
         return system_message, anthropic_messages
 
-    @staticmethod
     def _content_blocks_to_anthropic_content(
+        self,
         blocks: list[Any],
         *,
         allow_tool_use: bool = False,
     ) -> str | list[dict[str, Any]]:
-        return content_blocks_to_anthropic_content(blocks, allow_tool_use=allow_tool_use)
+        model = getattr(self, "_model", None)
+        return content_blocks_to_anthropic_content(
+            blocks,
+            allow_tool_use=allow_tool_use,
+            supports_images=bool(getattr(model, "vision_input_support", False)),
+            supports_files=bool(getattr(model, "file_input_support", False)),
+        )
 
     @staticmethod
     def _convert_tools_for_anthropic(
@@ -419,6 +426,46 @@ class AnthropicProvider(BaseProvider):
 
         walk(params)
         return "1h" if ttls == {"1h"} else "5m"
+
+    # Source-confirmed prompt-cache prefix minimums (tokens). Opus 4.x and Haiku 4.5 require
+    # 4096; Sonnet 4.6 / Fable 5 and older families use the 2048 default.
+    _SUPPORTED_CACHE_TTLS = frozenset({"5m", "1h"})
+    _DEFAULT_CACHE_MIN_TOKENS = 2048
+    _CACHE_MIN_TOKENS_BY_PREFIX: tuple[tuple[str, int], ...] = (
+        ("claude-opus-4", 4096),
+        ("claude-haiku-4-5", 4096),
+        ("claude-4-5-haiku", 4096),
+    )
+
+    @property
+    def cache_minimum_tokens(self) -> int:
+        """Minimum cached-prefix length (tokens) for this model's prompt caching."""
+        name = str(self.model_name or "")
+        for prefix, minimum in self._CACHE_MIN_TOKENS_BY_PREFIX:
+            if name.startswith(prefix):
+                return minimum
+        return self._DEFAULT_CACHE_MIN_TOKENS
+
+    def _validate_cache_controls(self, params: dict[str, Any]) -> None:
+        """Reject cache-control markers with unsupported TTLs before the network call."""
+
+        def walk(value: Any) -> None:
+            if isinstance(value, dict):
+                cache_control = value.get("cache_control")
+                if isinstance(cache_control, dict):
+                    ttl = cache_control.get("ttl")
+                    if ttl is not None and str(ttl) not in self._SUPPORTED_CACHE_TTLS:
+                        raise ValueError(
+                            f"Unsupported Anthropic cache-control ttl {ttl!r}; "
+                            f"supported values are {sorted(self._SUPPORTED_CACHE_TTLS)}."
+                        )
+                for nested in value.values():
+                    walk(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    walk(nested)
+
+        walk(params)
 
     @staticmethod
     def _apply_usage_pricing_multiplier(usage: Usage, multiplier: float) -> Usage:
@@ -658,6 +705,7 @@ class AnthropicProvider(BaseProvider):
 
         # Add extra kwargs
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
@@ -840,6 +888,7 @@ class AnthropicProvider(BaseProvider):
                     params["tool_choice"] = {"type": "tool", "name": tool_choice}
 
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
 
@@ -1095,6 +1144,109 @@ class AnthropicProvider(BaseProvider):
             error_dict = error.to_dict() if hasattr(error, "to_dict") else {"raw": str(error)}
             return BatchResultItem(custom_id=custom_id, status="errored", error=error_dict, raw=entry)
         return BatchResultItem(custom_id=custom_id, status=str(result_type or "unknown"), raw=entry)
+
+    # --- Models API ------------------------------------------------------------------
+
+    @staticmethod
+    def _model_info_from_anthropic(model: Any) -> ModelInfo:
+        return ModelInfo(
+            id=str(getattr(model, "id", "") or ""),
+            provider="anthropic",
+            display_name=getattr(model, "display_name", None),
+            created_at=getattr(model, "created_at", None),
+            type=getattr(model, "type", None),
+            raw=model,
+        )
+
+    async def list_models(
+        self,
+        *,
+        limit: int = 20,
+        after_id: str | None = None,
+        before_id: str | None = None,
+    ) -> ResourcePage:
+        """List models available to the account (one page; cursor via after_id/before_id)."""
+        kwargs: dict[str, Any] = {"limit": limit}
+        if after_id is not None:
+            kwargs["after_id"] = after_id
+        if before_id is not None:
+            kwargs["before_id"] = before_id
+        page = await self.client.models.list(**kwargs)
+        data = tuple(self._model_info_from_anthropic(m) for m in getattr(page, "data", []) or [])
+        return ResourcePage(
+            data=data,
+            has_more=bool(getattr(page, "has_more", False)),
+            first_id=getattr(page, "first_id", None),
+            last_id=getattr(page, "last_id", None),
+        )
+
+    async def retrieve_model(self, model_id: str) -> ModelInfo:
+        """Retrieve a single model's metadata."""
+        model = await self.client.models.retrieve(model_id)
+        return self._model_info_from_anthropic(model)
+
+    # --- Files API -------------------------------------------------------------------
+
+    @staticmethod
+    def _file_object_from_anthropic(file: Any) -> FileObject:
+        return FileObject(
+            id=str(getattr(file, "id", "") or ""),
+            provider="anthropic",
+            filename=getattr(file, "filename", None),
+            mime_type=getattr(file, "mime_type", None),
+            size_bytes=getattr(file, "size_bytes", None),
+            created_at=getattr(file, "created_at", None),
+            downloadable=getattr(file, "downloadable", None),
+            raw=file,
+        )
+
+    async def upload_file(self, file: Any) -> FileObject:
+        """Upload a file to the Anthropic Files API (beta)."""
+        uploaded = await self.client.beta.files.upload(file=file)
+        return self._file_object_from_anthropic(uploaded)
+
+    async def list_files(
+        self,
+        *,
+        limit: int = 20,
+        after_id: str | None = None,
+        before_id: str | None = None,
+    ) -> ResourcePage:
+        """List uploaded files (one page; cursor via after_id/before_id)."""
+        kwargs: dict[str, Any] = {"limit": limit}
+        if after_id is not None:
+            kwargs["after_id"] = after_id
+        if before_id is not None:
+            kwargs["before_id"] = before_id
+        page = await self.client.beta.files.list(**kwargs)
+        data = tuple(self._file_object_from_anthropic(f) for f in getattr(page, "data", []) or [])
+        return ResourcePage(
+            data=data,
+            has_more=bool(getattr(page, "has_more", False)),
+            first_id=getattr(page, "first_id", None),
+            last_id=getattr(page, "last_id", None),
+        )
+
+    async def retrieve_file_metadata(self, file_id: str) -> FileObject:
+        """Retrieve metadata for an uploaded file."""
+        file = await self.client.beta.files.retrieve_metadata(file_id)
+        return self._file_object_from_anthropic(file)
+
+    async def download_file(self, file_id: str) -> bytes:
+        """Download the raw bytes of a downloadable file."""
+        response = await self.client.beta.files.download(file_id)
+        if hasattr(response, "read"):
+            data = response.read()
+            return await data if hasattr(data, "__await__") else data
+        if isinstance(response, (bytes, bytearray)):
+            return bytes(response)
+        content = getattr(response, "content", None)
+        return bytes(content) if content is not None else b""
+
+    async def delete_file(self, file_id: str) -> FileObject:
+        """Delete an uploaded file; returns the deletion record."""
+        deleted = await self.client.beta.files.delete(file_id)
+        return self._file_object_from_anthropic(deleted)
 
     async def close(self) -> None:
         """

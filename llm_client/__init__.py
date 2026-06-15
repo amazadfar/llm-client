@@ -320,6 +320,7 @@ from .redaction import (
 from .batch_api import BatchJob, BatchRequestItem, BatchResultItem
 from .pricing import ResolvedCost, compute_model_cost, resolve_cost
 from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
+from .resources import FileObject, ModelInfo, ResourcePage
 from .spec import RequestContext, RequestSpec
 
 # === Telemetry ===
@@ -402,6 +403,9 @@ _STABLE_EXPORTS = [
     "BatchJob",
     "BatchRequestItem",
     "BatchResultItem",
+    "ModelInfo",
+    "FileObject",
+    "ResourcePage",
     "ExecutionEngine",
     "FailoverPolicy",
     "RetryConfig",
