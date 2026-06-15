@@ -15,7 +15,7 @@ from llm_client.models import ModelProfile, warn_if_deprecated
 
 def test_retired_model_warns_with_retirement_date() -> None:
     profile = ModelProfile.get("claude-3-haiku")
-    with pytest.warns(DeprecationWarning, match="retired on 2026-04-19"):
+    with pytest.warns(DeprecationWarning, match="retired on 2026-04-20"):
         warn_if_deprecated(profile)
 
 

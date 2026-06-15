@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "reviewed_at": "2026-06-15",
+  "stale_after_days": 30,
+  "sdk_matrix": {
+    "openai": {
+      "minimum": "2.36",
+      "validated": "2.36.0",
+      "upper_bound": "3"
+    },
+    "anthropic": {
+      "minimum": "0.104",
+      "validated": "0.104.1",
+      "upper_bound": "1"
+    }
+  },
+  "sources": [
+    {
+      "id": "openai-latest-model",
+      "provider": "openai",
+      "url": "https://developers.openai.com/api/docs/guides/latest-model",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "models",
+        "reasoning",
+        "tools",
+        "prompt_caching"
+      ]
+    },
+    {
+      "id": "openai-pricing",
+      "provider": "openai",
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "pricing",
+        "batch",
+        "service_tiers"
+      ]
+    },
+    {
+      "id": "openai-api-reference",
+      "provider": "openai",
+      "url": "https://developers.openai.com/api/reference",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "request_parameters",
+        "resources",
+        "response_usage"
+      ]
+    },
+    {
+      "id": "anthropic-models",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "models",
+        "limits",
+        "capabilities",
+        "aliases"
+      ]
+    },
+    {
+      "id": "anthropic-pricing",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "pricing",
+        "batch",
+        "cache_pricing",
+        "fast_mode"
+      ]
+    },
+    {
+      "id": "anthropic-lifecycle",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "lifecycle",
+        "replacements"
+      ]
+    },
+    {
+      "id": "anthropic-caching",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "prompt_caching",
+        "cache_minimums",
+        "cache_ttl"
+      ]
+    },
+    {
+      "id": "anthropic-fast-mode",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/fast-mode",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "fast_mode",
+        "beta_headers",
+        "fast_pricing"
+      ]
+    },
+    {
+      "id": "anthropic-service-tiers",
+      "provider": "anthropic",
+      "url": "https://platform.claude.com/docs/en/api/service-tiers",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "service_tiers",
+        "response_usage"
+      ]
+    },
+    {
+      "id": "anthropic-python-sdk",
+      "provider": "anthropic",
+      "url": "https://github.com/anthropics/anthropic-sdk-python",
+      "fetched_at": "2026-06-15",
+      "effective_date": "2026-06-15",
+      "review_status": "verified",
+      "scopes": [
+        "sdk_signatures",
+        "resources"
+      ]
+    }
+  ]
+}

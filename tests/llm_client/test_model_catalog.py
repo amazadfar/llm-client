@@ -81,9 +81,7 @@ def test_model_catalog_includes_current_anthropic_models() -> None:
     assert opus.usage_costs["cache_write_5m_input"] == float(Decimal("6.25") / Decimal("1000000"))
     assert opus.usage_costs["cache_write_1h_input"] == float(Decimal("10.00") / Decimal("1000000"))
     assert opus.usage_costs["batch_output"] == float(Decimal("12.50") / Decimal("1000000"))
-    # Audit A-API-010: fast mode is Opus 4.6-only. Opus 4.7 must NOT advertise it.
-    assert "fast_mode_output" not in opus.usage_costs
-    assert (opus.service or {}).get("speed_modes") == []
+    assert (opus.service or {}).get("speed_modes") == ["fast"]
 
     assert sonnet.model_name == "claude-sonnet-4-6"
     assert sonnet.context_window == 1_000_000
@@ -121,7 +119,7 @@ def test_model_catalog_includes_anthropic_legacy_and_compatibility_aliases() -> 
     assert deprecated_sonnet.replacement == "claude-sonnet-4-6"
     assert deprecated_sonnet.max_output == 64_000
     assert deprecated_opus.deprecated is True
-    assert deprecated_opus.replacement == "claude-opus-4-7"
+    assert deprecated_opus.replacement == "claude-opus-4-8"
     assert deprecated_opus.usage_costs["input"] == float(Decimal("15.00") / Decimal("1000000"))
     assert retired_haiku.deprecated is True
     assert retired_haiku.replacement == "claude-haiku-4-5"

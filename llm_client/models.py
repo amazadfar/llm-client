@@ -58,7 +58,7 @@ _UNRESOLVED_CONTEXT_WINDOW = 8192
 # dates land with Catalog v2, which replaces this hardcoded map.
 _RETIRED_MODELS: dict[str, str] = {
     # key: retirement date (ISO-8601)
-    "claude-3-haiku": "2026-04-19",
+    "claude-3-haiku": "2026-04-20",
 }
 
 
@@ -391,6 +391,9 @@ class ModelProfile:
 
     @classmethod
     def get(cls, key: str) -> type["ModelProfile"]:
+        catalog_profile = cls._get_catalog_profile(key)
+        if catalog_profile is not None:
+            return catalog_profile
         try:
             return cls._registry[key]
         except KeyError:
@@ -433,6 +436,16 @@ class ModelProfile:
                 key,
             )
             return cls._make_unresolved_profile(key)
+
+    @classmethod
+    @lru_cache(maxsize=4096)
+    def _get_catalog_profile(cls, key: str) -> type["ModelProfile"] | None:
+        from .model_catalog import get_default_model_catalog, model_profile_from_metadata
+
+        catalog = get_default_model_catalog()
+        if catalog.resolve_key(key) is None:
+            return None
+        return model_profile_from_metadata(catalog.get(key))
 
     @classmethod
     def _make_unresolved_profile(cls, key: str) -> type["ModelProfile"]:

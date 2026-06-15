@@ -56,12 +56,22 @@ class ResolvedCost:
         }
 
 
-def _dimension_matches(dim: PricingDimension, *, metric: str, mode: str, tier: str | None,
-                       region: str | None, tokens: int) -> bool:
+def _dimension_matches(
+    dim: PricingDimension,
+    *,
+    metric: str,
+    mode: str,
+    tier: str | None,
+    speed: str | None,
+    region: str | None,
+    tokens: int,
+) -> bool:
     if dim.metric != metric or dim.mode != mode:
         return False
     # tier: a dimension with tier=None applies to any/standard tier.
     if dim.tier is not None and dim.tier != tier:
+        return False
+    if dim.speed is not None and dim.speed != speed:
         return False
     # region: a dimension with region=None/"default" applies unless a specific region asked.
     if dim.region not in (None, "default") and dim.region != region:
@@ -77,12 +87,28 @@ def _dimension_matches(dim: PricingDimension, *, metric: str, mode: str, tier: s
     return True
 
 
-def _select_dimension(pricing: Pricing, *, metric: str, mode: str, tier: str | None,
-                      region: str | None, tokens: int) -> PricingDimension | None:
-    """Most specific matching dimension wins (threshold > region > tier > base)."""
+def _select_dimension(
+    pricing: Pricing,
+    *,
+    metric: str,
+    mode: str,
+    tier: str | None,
+    speed: str | None,
+    region: str | None,
+    tokens: int,
+) -> PricingDimension | None:
+    """Most specific matching dimension wins."""
     candidates = [
         d for d in pricing.dimensions
-        if _dimension_matches(d, metric=metric, mode=mode, tier=tier, region=region, tokens=tokens)
+        if _dimension_matches(
+            d,
+            metric=metric,
+            mode=mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            tokens=tokens,
+        )
     ]
     if not candidates:
         return None
@@ -92,19 +118,36 @@ def _select_dimension(pricing: Pricing, *, metric: str, mode: str, tier: str | N
             (1 if d.threshold is not None else 0)
             + (1 if d.region not in (None, "default") else 0)
             + (1 if d.tier is not None else 0)
+            + (1 if d.speed is not None else 0)
         )
 
     return max(candidates, key=specificity)
 
 
-def _rate_for(pricing: Pricing, *, metric: str, mode: str, tier: str | None,
-              region: str | None, tokens: int) -> tuple[float | None, bool]:
+def _rate_for(
+    pricing: Pricing,
+    *,
+    metric: str,
+    mode: str,
+    tier: str | None,
+    speed: str | None,
+    region: str | None,
+    tokens: int,
+) -> tuple[float | None, bool]:
     """Return ``(per_token_rate_or_None, dimension_present)``.
 
     ``dimension_present`` is False when the catalog has no dimension at all for this
     metric/selection, True when a dimension exists (even if its rate is unknown/None).
     """
-    dim = _select_dimension(pricing, metric=metric, mode=mode, tier=tier, region=region, tokens=tokens)
+    dim = _select_dimension(
+        pricing,
+        metric=metric,
+        mode=mode,
+        tier=tier,
+        speed=speed,
+        region=region,
+        tokens=tokens,
+    )
     if dim is None:
         return None, False
     if dim.rate is None:
@@ -124,6 +167,7 @@ def resolve_cost(
     cache_ttl: str = "5m",
     mode: str = "standard",
     tier: str | None = None,
+    speed: str | None = None,
     region: str | None = None,
     regional_uplift: float | None = None,
 ) -> ResolvedCost:
@@ -142,10 +186,22 @@ def resolve_cost(
     missing: list[str] = []
 
     input_rate, _ = _rate_for(
-        pricing, metric="input", mode=dim_mode, tier=tier, region=region, tokens=input_tokens
+        pricing,
+        metric="input",
+        mode=dim_mode,
+        tier=tier,
+        speed=speed,
+        region=region,
+        tokens=input_tokens,
     )
     output_rate, _ = _rate_for(
-        pricing, metric="output", mode=dim_mode, tier=tier, region=region, tokens=output_tokens
+        pricing,
+        metric="output",
+        mode=dim_mode,
+        tier=tier,
+        speed=speed,
+        region=region,
+        tokens=output_tokens,
     )
 
     input_cost = None if input_rate is None else uncached_input * input_rate
@@ -157,7 +213,15 @@ def resolve_cost(
 
     cache_read_cost: float | None = 0.0
     if cache_read_tokens:
-        cr_rate, _ = _rate_for(pricing, metric="cache_read", mode=dim_mode, tier=tier, region=region, tokens=cache_read_tokens)
+        cr_rate, _ = _rate_for(
+            pricing,
+            metric="cache_read",
+            mode=dim_mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            tokens=cache_read_tokens,
+        )
         if cr_rate is None:
             cache_read_cost = None
             missing.append("cache_read")
@@ -167,7 +231,15 @@ def resolve_cost(
     cache_write_cost: float | None = 0.0
     if cache_creation_tokens:
         metric = "cache_write_1h" if cache_ttl == "1h" else "cache_write_5m"
-        cw_rate, _ = _rate_for(pricing, metric=metric, mode=dim_mode, tier=tier, region=region, tokens=cache_creation_tokens)
+        cw_rate, _ = _rate_for(
+            pricing,
+            metric=metric,
+            mode=dim_mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            tokens=cache_creation_tokens,
+        )
         if cw_rate is None:
             cache_write_cost = None
             missing.append(metric)
@@ -217,6 +289,7 @@ def compute_model_cost(
     *,
     mode: str = "standard",
     tier: str | None = None,
+    speed: str | None = None,
     region: str | None = None,
     regional_uplift: float | None = None,
     cache_ttl: str = "5m",
@@ -238,6 +311,7 @@ def compute_model_cost(
         cache_ttl=cache_ttl,
         mode=mode,
         tier=tier,
+        speed=speed,
         region=region,
         regional_uplift=regional_uplift,
     )

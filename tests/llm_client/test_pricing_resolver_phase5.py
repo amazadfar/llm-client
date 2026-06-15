@@ -78,6 +78,19 @@ def test_opus_4_8_with_cache(catalog) -> None:
     assert cost.cost_status == "complete"
 
 
+def test_opus_4_8_fast_mode_pricing(catalog) -> None:
+    p = catalog.get("claude-opus-4-8").pricing
+    cost = resolve_cost(
+        p,
+        input_tokens=1_000_000,
+        output_tokens=1_000_000,
+        speed="fast",
+    )
+    assert cost.input_cost == pytest.approx(10.0)
+    assert cost.output_cost == pytest.approx(50.0)
+    assert cost.total_cost == pytest.approx(60.0)
+
+
 def test_gpt_5_5_pro_partial_pricing(catalog) -> None:
     p = catalog.get("gpt-5.5-pro").pricing
     # standard tier is known -> complete
@@ -103,7 +116,7 @@ def test_unknown_pricing_is_not_zero(catalog) -> None:
 def test_source_and_effective_date_exposed(catalog) -> None:
     p = catalog.get("claude-opus-4-8").pricing
     cost = resolve_cost(p, input_tokens=100, output_tokens=100)
-    assert cost.effective_date == "2026-06-13"
+    assert cost.effective_date == "2026-06-15"
     assert cost.pricing_source is not None
 
 

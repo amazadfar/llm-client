@@ -17,9 +17,15 @@ from __future__ import annotations
 
 from typing import Any
 
-_EFFECTIVE = "2026-06-13"
-_ANTHROPIC_SRC = {"url": "claude-api reference (2026-06-13)", "fetched_at": _EFFECTIVE}
-_OPENAI_SRC = {"url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)", "fetched_at": _EFFECTIVE}
+_EFFECTIVE = "2026-06-15"
+_ANTHROPIC_SRC = {
+    "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+    "fetched_at": _EFFECTIVE,
+}
+_OPENAI_SRC = {
+    "url": "https://developers.openai.com/api/docs/guides/latest-model",
+    "fetched_at": _EFFECTIVE,
+}
 
 # Anthropic-removed sampling params on current thinking models (claude-api).
 _ANTHROPIC_INCOMPATIBLE = ["temperature", "top_p", "top_k"]
@@ -57,6 +63,31 @@ def _anthropic_pricing(input_mtok: float, output_mtok: float) -> dict[str, Any]:
     }
 
 
+def _fast_dimensions(input_mtok: float, output_mtok: float) -> list[dict[str, Any]]:
+    return [
+        {"metric": "input", "unit": "million_tokens", "speed": "fast", "rate": input_mtok},
+        {"metric": "output", "unit": "million_tokens", "speed": "fast", "rate": output_mtok},
+        {
+            "metric": "cache_read",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": _round(input_mtok * 0.1),
+        },
+        {
+            "metric": "cache_write_5m",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": _round(input_mtok * 1.25),
+        },
+        {
+            "metric": "cache_write_1h",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": _round(input_mtok * 2.0),
+        },
+    ]
+
+
 def _anthropic_flagship(
     *,
     key: str,
@@ -73,10 +104,12 @@ def _anthropic_flagship(
     availability_notes: str | None = None,
     replacement: str | None = None,
     retires_on: str | None = None,
+    fast_rates: tuple[float, float] | None = None,
+    priority_eligible: bool = True,
 ) -> dict[str, Any]:
     service: dict[str, Any] = {
-        "tiers": ["standard", "priority"],
-        "speed_modes": [],  # fast mode is Opus 4.6 only
+        "tiers": ["standard", "priority"] if priority_eligible else ["standard"],
+        "speed_modes": ["fast"] if fast_rates else [],
         "batch_eligible": True,
         "region_modifiers": {"inference_geo_us": 1.1},
     }
@@ -87,6 +120,9 @@ def _anthropic_flagship(
         lifecycle["replacement"] = replacement
     if retires_on:
         lifecycle["retires_on"] = retires_on
+    pricing = _anthropic_pricing(input_mtok, output_mtok)
+    if fast_rates:
+        pricing["dimensions"].extend(_fast_dimensions(*fast_rates))
     return {
         "key": key,
         "provider": "anthropic",
@@ -128,7 +164,7 @@ def _anthropic_flagship(
                 "text_editor", "bash", "memory",
             ],
         },
-        "pricing": _anthropic_pricing(input_mtok, output_mtok),
+        "pricing": pricing,
         "rate_limits": {"tkn_per_min": 120_000, "req_per_min": 6_000},
     }
 
@@ -138,9 +174,10 @@ def _anthropic_flagship(
 NEW_MODELS: list[dict[str, Any]] = [
     _anthropic_flagship(
         key="claude-opus-4-8", model_name="claude-opus-4-8", display_name="Claude Opus 4.8",
-        input_mtok=5.0, output_mtok=25.0, cache_min=4096,
+        input_mtok=5.0, output_mtok=25.0, cache_min=1024,
         efforts=["low", "medium", "high", "xhigh", "max"],
         aliases=["claude-4-8-opus"],
+        fast_rates=(10.0, 50.0),
     ),
     _anthropic_flagship(
         key="claude-fable-5", model_name="claude-fable-5", display_name="Claude Fable 5",
@@ -151,6 +188,7 @@ NEW_MODELS: list[dict[str, Any]] = [
         key="claude-mythos-5", model_name="claude-mythos-5", display_name="Claude Mythos 5",
         input_mtok=10.0, output_mtok=50.0, cache_min=2048,
         availability_notes="Project Glasswing participants only.",
+        priority_eligible=False,
     ),
     _anthropic_flagship(
         key="claude-mythos-preview", model_name="claude-mythos-preview",
@@ -158,6 +196,7 @@ NEW_MODELS: list[dict[str, Any]] = [
         input_mtok=10.0, output_mtok=50.0, cache_min=2048,
         status="preview", replacement="claude-mythos-5", retires_on="2026-06-30",
         availability_notes="Invitation-only; retiring 2026-06-30. Use claude-mythos-5.",
+        priority_eligible=False,
     ),
 ]
 
@@ -272,18 +311,32 @@ NEW_MODELS.extend([_openai_gpt55(), _openai_gpt55_pro()])
 # --- patches onto converted baselines ------------------------------------------------
 
 ENRICHMENT: dict[str, dict[str, Any]] = {
-    # Fast mode is Opus 4.6 ONLY. The v1 catalog falsely flags it on Opus 4.7.
     "claude-opus-4-7": {
-        "service": {"speed_modes": [], "tiers": ["standard", "priority"]},
-        "caching": {"min_cacheable_tokens": 4096},
-        "reasoning": {"incompatible_params": list(_ANTHROPIC_INCOMPATIBLE)},
-        "lifecycle": {"status": "active", "source": _ANTHROPIC_SRC},
-    },
-    # Opus 4.6 retains fast mode (genuinely supported).
-    "claude-opus-4-6": {
         "service": {"speed_modes": ["fast"], "tiers": ["standard", "priority"]},
         "caching": {"min_cacheable_tokens": 4096},
         "reasoning": {"incompatible_params": list(_ANTHROPIC_INCOMPATIBLE)},
+        "lifecycle": {"status": "active", "source": _ANTHROPIC_SRC},
+        "pricing": {
+            "effective_date": _EFFECTIVE,
+            "source": _ANTHROPIC_SRC,
+            "dimensions": _anthropic_pricing(5.0, 25.0)["dimensions"]
+            + _fast_dimensions(30.0, 150.0),
+        },
+    },
+    "claude-opus-4-6": {
+        "service": {
+            "speed_modes": ["fast"],
+            "tiers": ["standard", "priority"],
+            "availability_notes": "Fast mode is deprecated and pending removal; migrate fast workloads to Opus 4.8 or 4.7.",
+        },
+        "caching": {"min_cacheable_tokens": 4096},
+        "reasoning": {"incompatible_params": list(_ANTHROPIC_INCOMPATIBLE)},
+        "pricing": {
+            "effective_date": _EFFECTIVE,
+            "source": _ANTHROPIC_SRC,
+            "dimensions": _anthropic_pricing(5.0, 25.0)["dimensions"]
+            + _fast_dimensions(30.0, 150.0),
+        },
     },
     "claude-sonnet-4-6": {
         "caching": {"min_cacheable_tokens": 2048},
@@ -295,12 +348,38 @@ ENRICHMENT: dict[str, dict[str, Any]] = {
         "caching": {"min_cacheable_tokens": 4096},
         "service": {"tiers": ["standard", "priority"], "batch_eligible": True},
     },
-    # Claude 3 Haiku retired on 2026-04-19 (past today's 2026-06-13).
     "claude-3-haiku": {
         "lifecycle": {
             "status": "retired",
-            "retires_on": "2026-04-19",
+            "retires_on": "2026-04-20",
             "replacement": "claude-haiku-4-5",
+            "source": _ANTHROPIC_SRC,
+        },
+    },
+    "claude-opus-4-1": {
+        "lifecycle": {
+            "status": "deprecated",
+            "deprecated_on": "2026-06-05",
+            "retires_on": "2026-08-05",
+            "replacement": "claude-opus-4-8",
+            "source": _ANTHROPIC_SRC,
+        },
+    },
+    "claude-opus-4": {
+        "lifecycle": {
+            "status": "deprecated",
+            "deprecated_on": "2026-04-14",
+            "retires_on": "2026-06-15",
+            "replacement": "claude-opus-4-8",
+            "source": _ANTHROPIC_SRC,
+        },
+    },
+    "claude-sonnet-4": {
+        "lifecycle": {
+            "status": "deprecated",
+            "deprecated_on": "2026-04-14",
+            "retires_on": "2026-06-15",
+            "replacement": "claude-sonnet-4-6",
             "source": _ANTHROPIC_SRC,
         },
     },

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
 import sys
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -21,8 +23,6 @@ from llm_client.benchmarks import (
     build_stream_benchmark_case,
     build_structured_quality_benchmark_case,
     build_tool_execution_benchmark_case,
-    compare_benchmark_reports,
-    load_benchmark_report,
     run_benchmarks,
     save_benchmark_report,
 )
@@ -56,7 +56,26 @@ from tests.llm_client.fakes import ScriptedProvider, ok_result
 ARTIFACT_DIR = ROOT / "artifacts" / "benchmarks"
 REPORT_PATH = ARTIFACT_DIR / "llm_client_rc_deterministic.json"
 COMPARISON_PATH = ARTIFACT_DIR / "llm_client_rc_deterministic_comparison.json"
-BASELINE_PATH = ROOT / "contracts" / "benchmarks" / "llm_client_deterministic_baseline.v1.json"
+BASELINE_PATH = ROOT / "tests" / "fixtures" / "benchmarks" / "llm_client_rc_semantic_baseline.v1.json"
+
+_STABLE_METRIC_KEYS: dict[str, set[str]] = {
+    "completion_smoke": {"iterations", "success_rate", "avg_total_tokens"},
+    "stream_smoke": {"iterations", "success_rate", "avg_stream_token_events"},
+    "embeddings_smoke": {"iterations", "avg_embedding_count"},
+    "tool_smoke": {"tool_call_count", "success_count", "error_count", "execution_mode"},
+    "cache_smoke": {"hit_rate", "cache_hits", "cache_misses", "first_status", "second_status"},
+    "failover_smoke": {"status", "ok", "providers_attempted", "fallback_count", "attempt_deltas"},
+    "context_smoke": {"selected_entries", "memory_entries", "has_summary", "has_persistent_summary"},
+    "structured_smoke": {
+        "total_cases",
+        "success_rate",
+        "repaired_success_rate",
+        "repaired_share_of_successes",
+        "avg_repair_attempts",
+        "max_repair_attempts",
+        "repair_attempt_histogram",
+    },
+}
 
 
 class _InMemoryCacheBackend(BaseCacheBackend):
@@ -185,28 +204,67 @@ def _structured_cases() -> list[StructuredBenchmarkCase]:
     ]
 
 
-def _comparison_to_dict(comparison: object) -> dict[str, object]:
-    current_label = getattr(comparison, "current_label")
-    baseline_label = getattr(comparison, "baseline_label")
+def _stable_metrics(name: str, metrics: dict[str, Any]) -> dict[str, Any]:
+    keys = _STABLE_METRIC_KEYS.get(name, set())
+    stable = {key: metrics[key] for key in sorted(keys) if key in metrics}
+    return json.loads(json.dumps(stable, sort_keys=True))
+
+
+def _semantic_snapshot(report: object) -> dict[str, Any]:
     records = []
-    for record in getattr(comparison, "records", []):
+    for record in sorted(getattr(report, "records", []), key=lambda item: item.name):
         records.append(
             {
                 "name": record.name,
                 "category": record.category.value,
-                "metric_deltas": dict(record.metric_deltas),
-                "current_metrics": dict(record.current_metrics),
-                "baseline_metrics": dict(record.baseline_metrics),
+                "status": record.status,
+                "metrics": _stable_metrics(record.name, dict(record.metrics)),
+                "labels": dict(record.labels),
+                "error": record.error,
             }
         )
     return {
-        "current_label": current_label,
-        "baseline_label": baseline_label,
+        "schema_version": 1,
+        "label": getattr(report, "metadata").label,
+        "mode": getattr(report, "metadata").mode.value,
+        "total_cases": report.total_cases,
+        "success_count": report.success_count,
+        "failed_count": report.failed_count,
         "records": records,
     }
 
 
-async def _run() -> None:
+def _diff_values(current: Any, baseline: Any, *, path: str = "$") -> list[str]:
+    if isinstance(current, dict) and isinstance(baseline, dict):
+        diffs: list[str] = []
+        current_keys = set(current)
+        baseline_keys = set(baseline)
+        for key in sorted(current_keys - baseline_keys):
+            diffs.append(f"{path}.{key}: unexpected key")
+        for key in sorted(baseline_keys - current_keys):
+            diffs.append(f"{path}.{key}: missing key")
+        for key in sorted(current_keys & baseline_keys):
+            diffs.extend(_diff_values(current[key], baseline[key], path=f"{path}.{key}"))
+        return diffs
+    if isinstance(current, list) and isinstance(baseline, list):
+        diffs = []
+        if len(current) != len(baseline):
+            diffs.append(f"{path}: length {len(current)} != {len(baseline)}")
+        for index, (current_item, baseline_item) in enumerate(zip(current, baseline, strict=False)):
+            diffs.extend(_diff_values(current_item, baseline_item, path=f"{path}[{index}]"))
+        return diffs
+    if current != baseline:
+        return [f"{path}: {current!r} != {baseline!r}"]
+    return []
+
+
+def _write_json(path: Path, data: dict[str, Any]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+async def _run(*, write_baseline: bool = False) -> int:
     provider = _DelayedProvider()
     cache_engine = ExecutionEngine(
         provider=_DelayedProvider(),
@@ -278,24 +336,51 @@ async def _run() -> None:
         hooks=HookManager([recorder]),
     )
     report_path = save_benchmark_report(report, REPORT_PATH)
-    baseline = load_benchmark_report(BASELINE_PATH)
-    comparison = compare_benchmark_reports(report, baseline)
-    COMPARISON_PATH.write_text(
-        json.dumps(_comparison_to_dict(comparison), indent=2, sort_keys=True),
-        encoding="utf-8",
+    current_snapshot = _semantic_snapshot(report)
+    if write_baseline:
+        _write_json(BASELINE_PATH, current_snapshot)
+        diff_entries: list[str] = []
+        status = "baseline_written"
+    else:
+        baseline_snapshot = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+        diff_entries = _diff_values(current_snapshot, baseline_snapshot)
+        status = "failed" if diff_entries else "passed"
+    _write_json(
+        COMPARISON_PATH,
+        {
+            "status": status,
+            "baseline": str(BASELINE_PATH.relative_to(ROOT)),
+            "report": str(report_path.relative_to(ROOT)),
+            "diffs": diff_entries,
+            "current": current_snapshot,
+        },
     )
 
     print("LLM CLIENT RC BENCHMARKS COMPLETED")
     print(f"- report: {report_path}")
+    print(f"- baseline: {BASELINE_PATH}")
     print(f"- comparison: {COMPARISON_PATH}")
     print(f"- total_cases: {report.total_cases}")
     print(f"- success_count: {report.success_count}")
     print(f"- recorder_cases: {len(recorder.cases)}")
+    print(f"- semantic_status: {status}")
+    if diff_entries:
+        print("- semantic_diffs:")
+        for diff in diff_entries:
+            print(f"  - {diff}")
+        return 1
+    return 0
 
 
 def main() -> int:
-    asyncio.run(_run())
-    return 0
+    parser = argparse.ArgumentParser(description="Run deterministic llm-client release-candidate benchmarks.")
+    parser.add_argument(
+        "--write-baseline",
+        action="store_true",
+        help="refresh the checked semantic baseline after intentional benchmark behavior changes",
+    )
+    args = parser.parse_args()
+    return asyncio.run(_run(write_baseline=args.write_baseline))
 
 
 if __name__ == "__main__":

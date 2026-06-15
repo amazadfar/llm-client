@@ -21,9 +21,9 @@ def catalog():
     clear_model_catalog_cache()
 
 
-def _rate(model, *, metric, mode="standard", tier=None, threshold=False):
+def _rate(model, *, metric, mode="standard", tier=None, speed=None, threshold=False):
     for dim in model.pricing.dimensions:
-        if dim.metric != metric or dim.mode != mode or dim.tier != tier:
+        if dim.metric != metric or dim.mode != mode or dim.tier != tier or dim.speed != speed:
             continue
         if threshold != (dim.threshold is not None):
             continue
@@ -37,12 +37,14 @@ def test_claude_opus_4_8_present_and_priced(catalog) -> None:
     m = catalog.get("claude-opus-4-8")
     assert m.lifecycle.status == "active"
     assert m.context_window == 1_000_000 and m.max_output == 128_000
-    assert m.caching["min_cacheable_tokens"] == 4096  # Opus 4.x tier
+    assert m.caching["min_cacheable_tokens"] == 1024
     assert _rate(m, metric="input") == 5.0
     assert _rate(m, metric="output") == 25.0
     assert _rate(m, metric="cache_read") == 0.5
     assert _rate(m, metric="input", mode="batch") == 2.5
-    assert (m.service or {}).get("speed_modes") == []  # no fast mode on 4.8
+    assert (m.service or {}).get("speed_modes") == ["fast"]
+    assert _rate(m, metric="input", speed="fast") == 10.0
+    assert _rate(m, metric="output", speed="fast") == 50.0
     assert m.reasoning_incompatible_params == ("temperature", "top_p", "top_k")
 
 
@@ -101,14 +103,15 @@ def test_gpt_5_5_pro_partial_pricing(catalog) -> None:
 # --- targeted audit corrections ------------------------------------------------------
 
 def test_fast_mode_scope_corrected(catalog) -> None:
-    # Opus 4.6 ONLY (audit A-API-010).
     assert (catalog.get("claude-opus-4-6").service or {}).get("speed_modes") == ["fast"]
-    assert (catalog.get("claude-opus-4-7").service or {}).get("speed_modes") == []
-    assert (catalog.get("claude-opus-4-8").service or {}).get("speed_modes") == []
+    assert (catalog.get("claude-opus-4-7").service or {}).get("speed_modes") == ["fast"]
+    assert (catalog.get("claude-opus-4-8").service or {}).get("speed_modes") == ["fast"]
+    assert "pending removal" in catalog.get("claude-opus-4-6").service["availability_notes"]
 
 
 def test_cache_minimums_corrected(catalog) -> None:
     assert catalog.get("claude-opus-4-7").caching["min_cacheable_tokens"] == 4096
+    assert catalog.get("claude-opus-4-8").caching["min_cacheable_tokens"] == 1024
     assert catalog.get("claude-haiku-4-5").caching["min_cacheable_tokens"] == 4096
     assert catalog.get("claude-sonnet-4-6").caching["min_cacheable_tokens"] == 2048
 
@@ -116,7 +119,7 @@ def test_cache_minimums_corrected(catalog) -> None:
 def test_claude_3_haiku_retired(catalog) -> None:
     m = catalog.get("claude-3-haiku")
     assert m.lifecycle.status == "retired"
-    assert m.lifecycle.retires_on == "2026-04-19"
+    assert m.lifecycle.retires_on == "2026-04-20"
     assert m.lifecycle.replacement == "claude-haiku-4-5"
     assert m.deprecated is True  # flat projection
 

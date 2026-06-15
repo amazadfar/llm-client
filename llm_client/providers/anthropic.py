@@ -639,11 +639,29 @@ class AnthropicProvider(BaseProvider):
         return candidate
 
     def _validate_anthropic_speed(self, speed: str) -> None:
-        """Fast mode (``speed='fast'``) is only valid on Opus 4.6 (audit A-API-010)."""
-        if speed == "fast" and "opus-4-6" not in str(getattr(self._model, "key", "")):
+        """Validate fast-mode eligibility from catalog capability metadata."""
+        if speed not in {"standard", "fast"}:
+            raise ValueError("Anthropic speed must be 'standard' or 'fast'.")
+        supported = set((getattr(self._model, "service", None) or {}).get("speed_modes") or [])
+        if speed == "fast" and "fast" not in supported:
             raise ValueError(
-                f"speed='fast' is only supported on Claude Opus 4.6, not {self.model_name!r}."
+                f"speed='fast' is not supported by {self.model_name!r}."
             )
+
+    def _anthropic_messages_resource(self, *, speed: str | None = None) -> Any:
+        """Select the stable or beta Messages resource required by the request."""
+        if speed is not None:
+            return self.client.beta.messages
+        return self.client.messages
+
+    @staticmethod
+    def _apply_fast_mode_beta(params: dict[str, Any], speed: str | None) -> None:
+        if speed is None:
+            return
+        betas = list(params.get("betas") or [])
+        if "fast-mode-2026-02-01" not in betas:
+            betas.append("fast-mode-2026-02-01")
+        params["betas"] = betas
 
     def _apply_sampling_temperature(
         self,
@@ -832,6 +850,7 @@ class AnthropicProvider(BaseProvider):
 
         # Add extra kwargs
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._apply_fast_mode_beta(params, speed)
         self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
@@ -871,7 +890,7 @@ class AnthropicProvider(BaseProvider):
 
         async with self.limiter.limit(tokens=input_tokens, requests=1) as limit_ctx:
             try:
-                response = await self.client.messages.create(**params)
+                response = await self._anthropic_messages_resource(speed=speed).create(**params)
 
                 # Parse the full response: text, tool calls, and rich blocks (thinking,
                 # redacted thinking, citations, server-tool results, refusal, stop details).
@@ -1021,6 +1040,7 @@ class AnthropicProvider(BaseProvider):
                     params["tool_choice"] = {"type": "tool", "name": tool_choice}
 
         params.update(self._sanitize_request_kwargs(kwargs))
+        self._apply_fast_mode_beta(params, speed)
         self._validate_cache_controls(params)
         pricing_multiplier = self._anthropic_pricing_multiplier(params)
         cache_creation_ttl = self._cache_creation_ttl_from_params(params)
@@ -1043,7 +1063,7 @@ class AnthropicProvider(BaseProvider):
 
         async with self.limiter.limit(tokens=input_tokens, requests=1) as limit_ctx:
             try:
-                async with self.client.messages.stream(**params) as stream:
+                async with self._anthropic_messages_resource(speed=speed).stream(**params) as stream:
                     async for raw_event in stream:
                         event = cast(Any, raw_event)
                         event_type = event.type

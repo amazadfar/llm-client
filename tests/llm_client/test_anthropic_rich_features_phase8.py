@@ -133,9 +133,37 @@ def test_convert_tools_rejects_openai_native_descriptors() -> None:
 
 # --- fast mode eligibility -----------------------------------------------------------
 
-def test_fast_mode_only_on_opus_4_6() -> None:
-    ok = _provider(key="claude-opus-4-6", model_name="claude-opus-4-6")
-    ok._validate_anthropic_speed("fast")  # no raise
-    bad = _provider(key="claude-opus-4-8", model_name="claude-opus-4-8")
+def test_fast_mode_uses_catalog_capability() -> None:
+    for key in ("claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8"):
+        ok = _provider(
+            key=key,
+            model_name=key,
+            service={"speed_modes": ["fast"]},
+        )
+        ok._validate_anthropic_speed("fast")
+    bad = _provider(
+        key="claude-sonnet-4-6",
+        model_name="claude-sonnet-4-6",
+        service={"speed_modes": []},
+    )
     with pytest.raises(ValueError):
         bad._validate_anthropic_speed("fast")
+
+
+def test_fast_mode_selects_beta_messages_and_header() -> None:
+    stable = object()
+    beta = object()
+    provider = _provider(
+        key="claude-opus-4-8",
+        model_name="claude-opus-4-8",
+        service={"speed_modes": ["fast"]},
+    )
+    provider.client = SimpleNamespace(
+        messages=stable,
+        beta=SimpleNamespace(messages=beta),
+    )
+    assert provider._anthropic_messages_resource() is stable
+    assert provider._anthropic_messages_resource(speed="fast") is beta
+    params: dict[str, Any] = {}
+    provider._apply_fast_mode_beta(params, "fast")
+    assert params["betas"] == ["fast-mode-2026-02-01"]

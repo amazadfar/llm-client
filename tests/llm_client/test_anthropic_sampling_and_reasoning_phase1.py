@@ -70,15 +70,21 @@ def test_sanitize_keeps_non_none_kwargs() -> None:
 
 # --- A-API-010: fast-mode (speed) scope ---------------------------------------------
 
-def test_speed_fast_rejected_on_non_opus_4_6() -> None:
+def test_speed_fast_rejected_when_catalog_does_not_advertise_it() -> None:
     provider = _provider()
-    with pytest.raises(ValueError, match="Opus 4.6"):
+    provider._model.service = {"speed_modes": []}
+    with pytest.raises(ValueError, match="speed='fast'"):
         provider._validate_anthropic_speed("fast")
 
 
-def test_speed_fast_allowed_on_opus_4_6() -> None:
+def test_speed_fast_allowed_when_catalog_advertises_it() -> None:
     provider = _provider()
-    provider._model = SimpleNamespace(key="claude-opus-4-6", model_name="claude-opus-4-6", reasoning_efforts=["low"])
+    provider._model = SimpleNamespace(
+        key="claude-opus-4-8",
+        model_name="claude-opus-4-8",
+        reasoning_efforts=["low"],
+        service={"speed_modes": ["fast"]},
+    )
     provider._validate_anthropic_speed("fast")  # must not raise
 
 

@@ -349,10 +349,10 @@
       "lifecycle": {
         "status": "retired",
         "replacement": "claude-haiku-4-5",
-        "retires_on": "2026-04-19",
+        "retires_on": "2026-04-20",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -906,8 +906,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -928,8 +928,8 @@
         "context_window": 1000000,
         "max_output": 128000,
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -989,10 +989,10 @@
       "pricing": {
         "completeness": "complete",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {
@@ -1170,8 +1170,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -1192,8 +1192,8 @@
         "context_window": 1000000,
         "max_output": 128000,
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -1227,8 +1227,7 @@
       },
       "service": {
         "tiers": [
-          "standard",
-          "priority"
+          "standard"
         ],
         "speed_modes": [],
         "batch_eligible": true,
@@ -1253,10 +1252,10 @@
       "pricing": {
         "completeness": "complete",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {
@@ -1318,8 +1317,8 @@
       "lifecycle": {
         "status": "preview",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         },
         "replacement": "claude-mythos-5",
         "retires_on": "2026-06-30"
@@ -1342,8 +1341,8 @@
         "context_window": 1000000,
         "max_output": 128000,
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -1377,8 +1376,7 @@
       },
       "service": {
         "tiers": [
-          "standard",
-          "priority"
+          "standard"
         ],
         "speed_modes": [],
         "batch_eligible": true,
@@ -1403,10 +1401,10 @@
       "pricing": {
         "completeness": "complete",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {
@@ -1462,7 +1460,13 @@
       "streaming": true,
       "lifecycle": {
         "status": "deprecated",
-        "replacement": "claude-opus-4-7"
+        "replacement": "claude-opus-4-8",
+        "deprecated_on": "2026-04-14",
+        "retires_on": "2026-06-15",
+        "source": {
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
+        }
       },
       "endpoints": [
         "messages",
@@ -1573,7 +1577,14 @@
       "encoding": "cl100k_base",
       "streaming": true,
       "lifecycle": {
-        "status": "active"
+        "status": "deprecated",
+        "deprecated_on": "2026-06-05",
+        "retires_on": "2026-08-05",
+        "replacement": "claude-opus-4-8",
+        "source": {
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
+        }
       },
       "endpoints": [
         "messages",
@@ -1849,11 +1860,6 @@
             "rate": 25.0
           },
           {
-            "metric": "cached_input",
-            "unit": "million_tokens",
-            "rate": 0.5
-          },
-          {
             "metric": "cache_read",
             "unit": "million_tokens",
             "rate": 0.5
@@ -1871,16 +1877,51 @@
           {
             "metric": "input",
             "unit": "million_tokens",
-            "rate": 2.5,
-            "mode": "batch"
+            "mode": "batch",
+            "rate": 2.5
           },
           {
             "metric": "output",
             "unit": "million_tokens",
-            "rate": 12.5,
-            "mode": "batch"
+            "mode": "batch",
+            "rate": 12.5
+          },
+          {
+            "metric": "input",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 30.0
+          },
+          {
+            "metric": "output",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 150.0
+          },
+          {
+            "metric": "cache_read",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 3.0
+          },
+          {
+            "metric": "cache_write_5m",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 37.5
+          },
+          {
+            "metric": "cache_write_1h",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 60.0
           }
-        ]
+        ],
+        "effective_date": "2026-06-15",
+        "source": {
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
+        }
       },
       "caching": {
         "supported": true,
@@ -1906,7 +1947,8 @@
         "tiers": [
           "standard",
           "priority"
-        ]
+        ],
+        "availability_notes": "Fast mode is deprecated and pending removal; migrate fast workloads to Opus 4.8 or 4.7."
       },
       "rate_limits": {
         "tkn_per_min": 120000,
@@ -1923,8 +1965,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -1975,11 +2017,6 @@
             "rate": 25.0
           },
           {
-            "metric": "cached_input",
-            "unit": "million_tokens",
-            "rate": 0.5
-          },
-          {
             "metric": "cache_read",
             "unit": "million_tokens",
             "rate": 0.5
@@ -1997,16 +2034,51 @@
           {
             "metric": "input",
             "unit": "million_tokens",
-            "rate": 2.5,
-            "mode": "batch"
+            "mode": "batch",
+            "rate": 2.5
           },
           {
             "metric": "output",
             "unit": "million_tokens",
-            "rate": 12.5,
-            "mode": "batch"
+            "mode": "batch",
+            "rate": 12.5
+          },
+          {
+            "metric": "input",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 30.0
+          },
+          {
+            "metric": "output",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 150.0
+          },
+          {
+            "metric": "cache_read",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 3.0
+          },
+          {
+            "metric": "cache_write_5m",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 37.5
+          },
+          {
+            "metric": "cache_write_1h",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 60.0
           }
-        ]
+        ],
+        "effective_date": "2026-06-15",
+        "source": {
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
+        }
       },
       "caching": {
         "supported": true,
@@ -2023,7 +2095,9 @@
       },
       "service": {
         "batch_eligible": true,
-        "speed_modes": [],
+        "speed_modes": [
+          "fast"
+        ],
         "region_modifiers": {
           "inference_geo_us_multiplier": 1.1
         },
@@ -2054,8 +2128,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -2076,8 +2150,8 @@
         "context_window": 1000000,
         "max_output": 128000,
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -2098,7 +2172,7 @@
       },
       "caching": {
         "supported": true,
-        "min_cacheable_tokens": 4096,
+        "min_cacheable_tokens": 1024,
         "ttls": [
           "5m",
           "1h"
@@ -2114,7 +2188,9 @@
           "standard",
           "priority"
         ],
-        "speed_modes": [],
+        "speed_modes": [
+          "fast"
+        ],
         "batch_eligible": true,
         "region_modifiers": {
           "inference_geo_us": 1.1
@@ -2136,10 +2212,10 @@
       "pricing": {
         "completeness": "complete",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "claude-api reference (2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {
@@ -2178,6 +2254,36 @@
             "unit": "million_tokens",
             "mode": "batch",
             "rate": 12.5
+          },
+          {
+            "metric": "input",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 10.0
+          },
+          {
+            "metric": "output",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 50.0
+          },
+          {
+            "metric": "cache_read",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 1.0
+          },
+          {
+            "metric": "cache_write_5m",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 12.5
+          },
+          {
+            "metric": "cache_write_1h",
+            "unit": "million_tokens",
+            "speed": "fast",
+            "rate": 20.0
           }
         ]
       },
@@ -2195,7 +2301,13 @@
       "streaming": true,
       "lifecycle": {
         "status": "deprecated",
-        "replacement": "claude-sonnet-4-6"
+        "replacement": "claude-sonnet-4-6",
+        "deprecated_on": "2026-04-14",
+        "retires_on": "2026-06-15",
+        "source": {
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "fetched_at": "2026-06-15"
+        }
       },
       "endpoints": [
         "messages",
@@ -5365,8 +5477,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -5388,8 +5500,8 @@
         "context_window": 400000,
         "max_output": 128000,
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -5437,10 +5549,10 @@
       "pricing": {
         "completeness": "complete",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {
@@ -5548,8 +5660,8 @@
       "lifecycle": {
         "status": "active",
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         }
       },
       "endpoints": [
@@ -5570,8 +5682,8 @@
         "context_window": 400000,
         "max_output": 128000,
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         }
       },
       "reasoning": {
@@ -5606,10 +5718,10 @@
       "pricing": {
         "completeness": "partial",
         "currency": "USD",
-        "effective_date": "2026-06-13",
+        "effective_date": "2026-06-15",
         "source": {
-          "url": "OpenAI docs (audit O-CAT-001, re-verified 2026-06-13)",
-          "fetched_at": "2026-06-13"
+          "url": "https://developers.openai.com/api/docs/guides/latest-model",
+          "fetched_at": "2026-06-15"
         },
         "dimensions": [
           {

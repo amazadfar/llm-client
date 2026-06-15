@@ -73,7 +73,7 @@ class AnthropicRequestOptions:
 
     ``thinking`` is the native extended-thinking config (e.g. ``{"type": "adaptive"}``).
     ``effort`` maps to ``output_config.effort``. ``speed`` is the fast-mode selector
-    (Opus 4.6 only). All are forwarded to the provider call.
+    for supported Opus models. All are forwarded to the provider call.
     """
 
     thinking: dict[str, Any] | None = None

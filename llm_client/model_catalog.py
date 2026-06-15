@@ -76,6 +76,7 @@ class PricingDimension:
     unit: str
     mode: str = "standard"
     tier: str | None = None
+    speed: str | None = None
     region: str | None = None
     threshold: dict[str, Any] | None = None
     rate: float | None = None
@@ -86,6 +87,8 @@ class PricingDimension:
         data: dict[str, Any] = {"metric": self.metric, "unit": self.unit, "mode": self.mode}
         if self.tier is not None:
             data["tier"] = self.tier
+        if self.speed is not None:
+            data["speed"] = self.speed
         if self.region is not None:
             data["region"] = self.region
         if self.threshold is not None:
@@ -742,6 +745,7 @@ def _metadata_from_v2_model(raw: dict[str, Any]) -> ModelMetadata:
             unit=str(d["unit"]),
             mode=str(d.get("mode", "standard")),
             tier=d.get("tier"),
+            speed=d.get("speed"),
             region=d.get("region"),
             threshold=d.get("threshold"),
             rate=None if d.get("rate") is None else float(d["rate"]),
@@ -893,6 +897,9 @@ def get_default_model_catalog() -> ModelCatalog:
 
 def clear_model_catalog_cache() -> None:
     load_model_catalog.cache_clear()
+    from .models import ModelProfile
+
+    ModelProfile._get_catalog_profile.cache_clear()
 
 
 def get_provider_default_model(provider: str, *, category: str = "completions") -> str | None:

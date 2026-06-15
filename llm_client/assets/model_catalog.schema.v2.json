@@ -153,7 +153,7 @@
           "additionalProperties": false,
           "properties": {
             "tiers": {"type": "array", "items": {"type": "string"}, "description": "Requestable service tiers."},
-            "speed_modes": {"type": "array", "items": {"type": "string"}, "description": "e.g. 'fast' (Opus 4.6 only)."},
+            "speed_modes": {"type": "array", "items": {"type": "string"}, "description": "Provider speed selectors, for example Anthropic fast mode."},
             "batch_eligible": {"type": "boolean"},
             "region_modifiers": {"type": "object", "additionalProperties": {"type": "number"}},
             "availability_notes": {"type": ["string", "null"]}
@@ -223,6 +223,7 @@
         },
         "mode": {"type": "string", "enum": ["standard", "batch"], "default": "standard"},
         "tier": {"type": ["string", "null"], "description": "service tier this rate applies to; null = any/standard"},
+        "speed": {"type": ["string", "null"], "description": "speed mode this rate applies to; null = standard speed"},
         "region": {"type": ["string", "null"], "description": "default | us | eu | ...; null = any"},
         "threshold": {
           "type": ["object", "null"],

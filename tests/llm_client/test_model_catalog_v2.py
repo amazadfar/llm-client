@@ -16,6 +16,7 @@ from llm_client.model_catalog import (
     Pricing,
     PricingDimension,
     clear_model_catalog_cache,
+    get_default_model_catalog,
     load_model_catalog,
     metadata_from_profile,
     model_profile_from_metadata,
@@ -58,6 +59,7 @@ def _v2_model(**overrides: Any) -> dict[str, Any]:
             "dimensions": [
                 {"metric": "input", "unit": "million_tokens", "rate": 3.0},
                 {"metric": "output", "unit": "million_tokens", "rate": 15.0},
+                {"metric": "output", "unit": "million_tokens", "speed": "fast", "rate": 30.0},
                 {"metric": "input", "unit": "million_tokens", "mode": "batch", "rate": 1.5},
             ],
         },
@@ -139,7 +141,8 @@ def test_v2_structured_fields_preserved(tmp_path: Path) -> None:
     assert m.caching["min_cacheable_tokens"] == 2048
     assert m.service["batch_eligible"] is True
     assert isinstance(m.lifecycle, Lifecycle) and m.lifecycle.status == "active"
-    assert isinstance(m.pricing, Pricing) and len(m.pricing.dimensions) == 3
+    assert isinstance(m.pricing, Pricing) and len(m.pricing.dimensions) == 4
+    assert m.pricing.dimensions[2].speed == "fast"
 
 
 # --- alias / snapshot identity (A-CAT-003) -------------------------------------------
@@ -266,13 +269,24 @@ def test_existing_model_profiles_still_resolve() -> None:
     assert ModelProfile.get("claude-sonnet-4-6").key == "claude-sonnet-4-6"
 
 
+def test_model_profile_get_prefers_catalog_v2_metadata() -> None:
+    profile = ModelProfile.get("o4-mini-deep-research")
+    catalog_meta = get_default_model_catalog().get("o4-mini-deep-research")
+
+    assert profile._skip_registry is True
+    assert profile is not ModelProfile._registry["o4-mini-deep-research"]
+    assert profile.responses_api_support is catalog_meta.responses_api is True
+    assert profile.responses_native_tools_support is catalog_meta.responses_native_tools is True
+    assert profile.background_responses_support is catalog_meta.background_responses is True
+
+
 def test_model_profile_from_metadata_roundtrip() -> None:
     prof = ModelProfile.get("claude-sonnet-4-6")
     meta = metadata_from_profile(prof)
     derived = model_profile_from_metadata(meta)
     assert derived.key == "claude-sonnet-4-6"
     assert derived._skip_registry is True
-    # not registered as a canonical entry
-    assert ModelProfile._registry.get("claude-sonnet-4-6") is prof
+    # catalog projections are not registered as canonical static entries
+    assert ModelProfile._registry.get("claude-sonnet-4-6") is not prof
     assert derived.usage_costs["input"] == prof.usage_costs["input"]
     assert derived.reasoning_efforts == list(prof.reasoning_efforts)
