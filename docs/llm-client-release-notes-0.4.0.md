@@ -1,6 +1,6 @@
 # llm-client 0.4.0 Release Notes
 
-Status: release candidate
+Status: released
 
 ## Added
 
@@ -61,10 +61,17 @@ See [llm-client-migration-to-0.4.0.md](llm-client-migration-to-0.4.0.md).
 
 ## Validation
 
-The release gate includes compile checks, the full package test suite, catalog
-validation, artifact verification, all cookbook examples with credential-less
-skip support, deterministic RC benchmarks, wheel/sdist builds, and clean
-artifact installation smokes.
+Validated before release:
+
+- `489 passed, 3 skipped, 6 warnings` for `tests/llm_client`.
+- Offline and online provider-catalog validation passed for the
+  `2026-06-15` reviewed snapshot.
+- Deterministic release-candidate benchmarks passed all 8 semantic cases.
+- Cookbook examples were validated in segmented live rings with credential-less
+  skip support for optional Qdrant, PostgreSQL, realtime audio, and MCP
+  continuation prerequisites.
+- Wheel/sdist build, artifact verification, and clean-install smoke were run
+  during final release packaging.
 
 ## Known Limitations
 
