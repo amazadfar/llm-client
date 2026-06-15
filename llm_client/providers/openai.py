@@ -43,7 +43,9 @@ from ..errors import (
     normalize_provider_failure,
 )
 from ..hashing import cache_key as compute_cache_key
+from ..model_catalog import get_default_model_catalog
 from ..rate_limit import Limiter
+from ..resources import ModelInfo, ProviderResourceAvailability, ResourcePage
 from ..structured import build_structured_response_format
 from .base import BaseProvider
 from .types import (
@@ -52,6 +54,10 @@ from .types import (
     BackgroundResponseResult,
     CompactionResult,
     CompletionResult,
+    ContainerFileResource,
+    ContainerFilesPage,
+    ContainerResource,
+    ContainersPage,
     DeepResearchRunResult,
     ConversationItemResource,
     ConversationItemsPage,
@@ -80,6 +86,10 @@ from .types import (
     RealtimeConnection,
     RealtimeClientSecretResult,
     RealtimeTranscriptionSessionResult,
+    SkillResource,
+    SkillsPage,
+    SkillVersionResource,
+    SkillVersionsPage,
     VectorStoreFileBatchResource,
     VectorStoreFileContentResult,
     VectorStoreFileResource,
@@ -87,6 +97,10 @@ from .types import (
     VectorStoreResource,
     VectorStoreSearchResult,
     VectorStoresPage,
+    VideoCharacterResource,
+    VideoContentResult,
+    VideoResource,
+    VideosPage,
     WebhookEventResult,
 )
 
@@ -665,8 +679,8 @@ class OpenAIProvider(BaseProvider):
 
         return rewritten, alias_to_original, original_to_alias
 
-    @staticmethod
     def _validate_tool_configuration(
+        self,
         *,
         tools: list[Any] | None,
         use_responses_api: bool,
@@ -689,6 +703,51 @@ class OpenAIProvider(BaseProvider):
                     "`OpenAIProvider(..., use_responses_api=True)`; got unsupported tool descriptors: "
                     f"{rendered}"
                 )
+            return
+
+        rendered_tools = self._tools_to_api_format(tools) or []
+        managed_aliases = {
+            "computer_use_preview": "computer_use",
+            "local_shell": "hosted_shell",
+            "shell": "hosted_shell",
+            "web_search_preview": "web_search",
+        }
+        client_tool_types = {"", "custom", "function", "namespace"}
+        managed_tools = {
+            managed_aliases.get(str(item.get("type") or ""), str(item.get("type") or ""))
+            for item in rendered_tools
+            if isinstance(item, dict) and str(item.get("type") or "") not in client_tool_types
+        }
+        if not managed_tools:
+            return
+
+        if not bool(getattr(self._model, "resolved", True)):
+            raise ValueError(
+                f"Cannot validate OpenAI native tools {sorted(managed_tools)} for unresolved "
+                f"model {self.model_name!r}; add authoritative catalog metadata or use a known model."
+            )
+        if not bool(getattr(self._model, "responses_native_tools_support", False)):
+            raise ValueError(
+                f"Model {self.model_name!r} does not advertise OpenAI Responses native-tool support."
+            )
+
+        try:
+            metadata = get_default_model_catalog().get(
+                str(getattr(self._model, "key", self.model_name))
+            )
+        except ValueError:
+            return
+        exact_tools = (metadata.tools or {}).get("server_tools")
+        if not isinstance(exact_tools, list):
+            return
+
+        supported = {str(tool) for tool in exact_tools}
+        unsupported = sorted(tool for tool in managed_tools if tool not in supported)
+        if unsupported:
+            raise ValueError(
+                f"Model {self.model_name!r} does not support OpenAI native tool(s) "
+                f"{unsupported}; catalog-supported tools: {sorted(supported)}."
+            )
 
     @staticmethod
     def _messages_to_api_format(
@@ -1491,6 +1550,207 @@ class OpenAIProvider(BaseProvider):
             event_type=str(event_dict.get("type") or "") or None,
             data=dict(data) if isinstance(data, dict) else event_dict,
             raw_event=event,
+        )
+
+    @staticmethod
+    def _model_info_from_openai(response: Any) -> ModelInfo:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return ModelInfo(
+            id=str(response_dict.get("id") or ""),
+            provider="openai",
+            created_at=response_dict.get("created"),
+            type=str(response_dict.get("object") or "") or None,
+            raw=response,
+        )
+
+    @staticmethod
+    def _container_resource_from_response(response: Any) -> ContainerResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        expires_after = response_dict.get("expires_after")
+        network_policy = response_dict.get("network_policy")
+        return ContainerResource(
+            container_id=str(response_dict.get("id") or ""),
+            name=str(response_dict.get("name") or "") or None,
+            status=str(response_dict.get("status") or "") or None,
+            created_at=response_dict.get("created_at"),
+            expires_after=dict(expires_after) if isinstance(expires_after, dict) else None,
+            last_active_at=response_dict.get("last_active_at"),
+            memory_limit=str(response_dict.get("memory_limit") or "") or None,
+            network_policy=dict(network_policy) if isinstance(network_policy, dict) else None,
+            raw_response=response,
+        )
+
+    def _containers_page_from_response(self, response: Any) -> ContainersPage:
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return ContainersPage(
+            items=[
+                self._container_resource_from_response(item)
+                for item in response_dict.get("data") or []
+                if item is not None
+            ],
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+            has_more=bool(response_dict.get("has_more")),
+            raw_response=response,
+        )
+
+    @staticmethod
+    def _container_file_resource_from_response(
+        response: Any,
+        *,
+        container_id: str,
+    ) -> ContainerFileResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return ContainerFileResource(
+            file_id=str(response_dict.get("id") or ""),
+            container_id=str(response_dict.get("container_id") or container_id),
+            path=str(response_dict.get("path") or "") or None,
+            bytes=int(response_dict["bytes"]) if response_dict.get("bytes") is not None else None,
+            created_at=response_dict.get("created_at"),
+            source=str(response_dict.get("source") or "") or None,
+            raw_response=response,
+        )
+
+    def _container_files_page_from_response(
+        self,
+        response: Any,
+        *,
+        container_id: str,
+    ) -> ContainerFilesPage:
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return ContainerFilesPage(
+            container_id=container_id,
+            items=[
+                self._container_file_resource_from_response(item, container_id=container_id)
+                for item in response_dict.get("data") or []
+                if item is not None
+            ],
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+            has_more=bool(response_dict.get("has_more")),
+            raw_response=response,
+        )
+
+    @staticmethod
+    def _skill_resource_from_response(response: Any) -> SkillResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return SkillResource(
+            skill_id=str(response_dict.get("id") or ""),
+            name=str(response_dict.get("name") or "") or None,
+            description=str(response_dict.get("description") or "") or None,
+            default_version=str(response_dict.get("default_version") or "") or None,
+            latest_version=str(response_dict.get("latest_version") or "") or None,
+            created_at=response_dict.get("created_at"),
+            raw_response=response,
+        )
+
+    def _skills_page_from_response(self, response: Any) -> SkillsPage:
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return SkillsPage(
+            items=[
+                self._skill_resource_from_response(item)
+                for item in response_dict.get("data") or []
+                if item is not None
+            ],
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+            has_more=bool(response_dict.get("has_more")),
+            raw_response=response,
+        )
+
+    @staticmethod
+    def _skill_version_resource_from_response(
+        response: Any,
+        *,
+        skill_id: str,
+    ) -> SkillVersionResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return SkillVersionResource(
+            skill_id=str(response_dict.get("skill_id") or skill_id),
+            version=str(response_dict.get("version") or response_dict.get("id") or ""),
+            name=str(response_dict.get("name") or "") or None,
+            description=str(response_dict.get("description") or "") or None,
+            created_at=response_dict.get("created_at"),
+            raw_response=response,
+        )
+
+    def _skill_versions_page_from_response(
+        self,
+        response: Any,
+        *,
+        skill_id: str,
+    ) -> SkillVersionsPage:
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return SkillVersionsPage(
+            skill_id=skill_id,
+            items=[
+                self._skill_version_resource_from_response(item, skill_id=skill_id)
+                for item in response_dict.get("data") or []
+                if item is not None
+            ],
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+            has_more=bool(response_dict.get("has_more")),
+            raw_response=response,
+        )
+
+    @staticmethod
+    def _video_resource_from_response(response: Any) -> VideoResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        error = response_dict.get("error")
+        progress = response_dict.get("progress")
+        return VideoResource(
+            video_id=str(response_dict.get("id") or ""),
+            status=str(response_dict.get("status") or "") or None,
+            model=str(response_dict.get("model") or "") or None,
+            prompt=str(response_dict.get("prompt") or "") or None,
+            progress=float(progress) if progress is not None else None,
+            seconds=str(response_dict.get("seconds") or "") or None,
+            size=str(response_dict.get("size") or "") or None,
+            created_at=response_dict.get("created_at"),
+            completed_at=response_dict.get("completed_at"),
+            expires_at=response_dict.get("expires_at"),
+            remixed_from_video_id=(
+                str(response_dict.get("remixed_from_video_id") or "") or None
+            ),
+            error=dict(error) if isinstance(error, dict) else None,
+            raw_response=response,
+        )
+
+    def _videos_page_from_response(self, response: Any) -> VideosPage:
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return VideosPage(
+            items=[
+                self._video_resource_from_response(item)
+                for item in response_dict.get("data") or []
+                if item is not None
+            ],
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+            has_more=bool(response_dict.get("has_more")),
+            raw_response=response,
+        )
+
+    @staticmethod
+    def _video_character_resource_from_response(response: Any) -> VideoCharacterResource:
+        payload = OpenAIProvider._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        return VideoCharacterResource(
+            character_id=str(response_dict.get("id") or ""),
+            name=str(response_dict.get("name") or "") or None,
+            created_at=response_dict.get("created_at"),
+            raw_response=response,
         )
 
     @staticmethod
@@ -3196,6 +3456,520 @@ class OpenAIProvider(BaseProvider):
             except Exception as e:
                 yield StreamEvent(type=StreamEventType.ERROR, data=failure_to_stream_error_data(self._failure(error=e, operation="stream")))
 
+    def get_resource_availability(self) -> ProviderResourceAvailability:
+        """Describe the installed SDK surface without claiming model/account support."""
+
+        def _has_path(*parts: str) -> bool:
+            current: Any = self.client
+            for part in parts:
+                current = getattr(current, part, None)
+                if current is None:
+                    return False
+            return True
+
+        checks = {
+            "models": ("models",),
+            "batches": ("batches",),
+            "containers": ("containers",),
+            "container_files": ("containers", "files"),
+            "container_file_content": ("containers", "files", "content"),
+            "skills": ("skills",),
+            "skill_versions": ("skills", "versions"),
+            "skill_content": ("skills", "content"),
+            "skill_version_content": ("skills", "versions", "content"),
+            "videos": ("videos",),
+            "audio_transcriptions": ("audio", "transcriptions"),
+            "audio_translations": ("audio", "translations"),
+            "audio_speech": ("audio", "speech"),
+            "voice_consents": ("audio", "voice_consents"),
+            "voices": ("audio", "voices"),
+            "realtime_client_secrets": ("realtime", "client_secrets"),
+            "realtime_calls": ("realtime", "calls"),
+            "realtime_translations": ("realtime", "translations"),
+            "realtime_websocket": ("realtime", "connect"),
+            "files": ("files",),
+            "uploads": ("uploads",),
+            "vector_stores": ("vector_stores",),
+            "fine_tuning": ("fine_tuning", "jobs"),
+            "images": ("images",),
+        }
+        available = tuple(sorted(name for name, path in checks.items() if _has_path(*path)))
+        exclusion_reasons = {
+            "container_file_content": (
+                "OpenAI Python SDK 2.36 exposes container-file lifecycle methods but "
+                "not the documented content endpoint."
+            ),
+            "skill_content": (
+                "OpenAI Python SDK 2.36 exposes skill lifecycle methods but not the "
+                "documented skill-content endpoint."
+            ),
+            "skill_version_content": (
+                "OpenAI Python SDK 2.36 exposes skill-version lifecycle methods but "
+                "not the documented version-content endpoint."
+            ),
+            "realtime_translations": (
+                "OpenAI Python SDK 2.36 exposes translation through direct Realtime "
+                "transport, not a typed resource client."
+            ),
+            "voice_consents": (
+                "The official API documents custom voice consent, but OpenAI Python SDK "
+                "2.36 does not expose audio.voice_consents."
+            ),
+            "voices": (
+                "The official API documents custom voices, but OpenAI Python SDK 2.36 "
+                "does not expose audio.voices."
+            ),
+        }
+        unavailable = {
+            name: reason
+            for name, reason in exclusion_reasons.items()
+            if name not in available
+        }
+        return ProviderResourceAvailability(
+            provider="openai",
+            sdk_version=str(getattr(openai, "__version__", "") or "") or None,
+            available=available,
+            unavailable=unavailable,
+            experimental=("videos",),
+        )
+
+    async def list_models(self, **kwargs: Any) -> ResourcePage:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.models.list(**kwargs)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        payload = self._serialize_responses_item(response)
+        response_dict = payload if isinstance(payload, dict) else {}
+        items = tuple(
+            self._model_info_from_openai(item)
+            for item in response_dict.get("data") or []
+            if item is not None
+        )
+        return ResourcePage(
+            data=items,
+            has_more=bool(response_dict.get("has_more")),
+            first_id=str(response_dict.get("first_id") or "") or None,
+            last_id=str(response_dict.get("last_id") or "") or None,
+        )
+
+    async def retrieve_model(self, model_id: str, **kwargs: Any) -> ModelInfo:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.models.retrieve(model_id, **kwargs)
+        return self._model_info_from_openai(response)
+
+    async def create_container(
+        self,
+        *,
+        name: str,
+        expires_after: dict[str, Any] | None = None,
+        file_ids: list[str] | tuple[str, ...] | None = None,
+        memory_limit: str | None = None,
+        network_policy: dict[str, Any] | None = None,
+        skills: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+        **kwargs: Any,
+    ) -> ContainerResource:
+        params = dict(kwargs)
+        params["name"] = name
+        if expires_after is not None:
+            params["expires_after"] = dict(expires_after)
+        if file_ids is not None:
+            params["file_ids"] = list(file_ids)
+        if memory_limit is not None:
+            params["memory_limit"] = memory_limit
+        if network_policy is not None:
+            params["network_policy"] = dict(network_policy)
+        if skills is not None:
+            params["skills"] = [dict(skill) for skill in skills]
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.create(**params)
+        return self._container_resource_from_response(response)
+
+    async def retrieve_container(self, container_id: str, **kwargs: Any) -> ContainerResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.retrieve(container_id, **kwargs)
+        return self._container_resource_from_response(response)
+
+    async def list_containers(
+        self,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        name: str | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> ContainersPage:
+        params = dict(kwargs)
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        if name is not None:
+            params["name"] = name
+        if order is not None:
+            params["order"] = order
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.list(**params)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        return self._containers_page_from_response(response)
+
+    async def delete_container(self, container_id: str, **kwargs: Any) -> DeletionResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.delete(container_id, **kwargs)
+        return DeletionResult(resource_id=container_id, deleted=True, raw_response=response)
+
+    async def create_container_file(
+        self,
+        container_id: str,
+        *,
+        file: Any | None = None,
+        file_id: str | None = None,
+        **kwargs: Any,
+    ) -> ContainerFileResource:
+        if (file is None) == (file_id is None):
+            raise ValueError("Provide exactly one of `file` or `file_id`.")
+        params = dict(kwargs)
+        if file is not None:
+            params["file"] = file
+        if file_id is not None:
+            params["file_id"] = file_id
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.files.create(container_id, **params)
+        return self._container_file_resource_from_response(response, container_id=container_id)
+
+    async def retrieve_container_file(
+        self,
+        container_id: str,
+        file_id: str,
+        **kwargs: Any,
+    ) -> ContainerFileResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.files.retrieve(
+                file_id,
+                container_id=container_id,
+                **kwargs,
+            )
+        return self._container_file_resource_from_response(response, container_id=container_id)
+
+    async def list_container_files(
+        self,
+        container_id: str,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> ContainerFilesPage:
+        params = dict(kwargs)
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        if order is not None:
+            params["order"] = order
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.files.list(container_id, **params)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        return self._container_files_page_from_response(response, container_id=container_id)
+
+    async def delete_container_file(
+        self,
+        container_id: str,
+        file_id: str,
+        **kwargs: Any,
+    ) -> DeletionResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.containers.files.delete(
+                file_id,
+                container_id=container_id,
+                **kwargs,
+            )
+        return DeletionResult(resource_id=file_id, deleted=True, raw_response=response)
+
+    async def create_skill(self, *, files: Any | None = None, **kwargs: Any) -> SkillResource:
+        params = dict(kwargs)
+        if files is not None:
+            params["files"] = files
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.create(**params)
+        return self._skill_resource_from_response(response)
+
+    async def retrieve_skill(self, skill_id: str, **kwargs: Any) -> SkillResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.retrieve(skill_id, **kwargs)
+        return self._skill_resource_from_response(response)
+
+    async def list_skills(
+        self,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> SkillsPage:
+        params = dict(kwargs)
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        if order is not None:
+            params["order"] = order
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.list(**params)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        return self._skills_page_from_response(response)
+
+    async def update_skill(
+        self,
+        skill_id: str,
+        *,
+        default_version: str,
+        **kwargs: Any,
+    ) -> SkillResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.update(
+                skill_id,
+                default_version=default_version,
+                **kwargs,
+            )
+        return self._skill_resource_from_response(response)
+
+    async def delete_skill(self, skill_id: str, **kwargs: Any) -> DeletionResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.delete(skill_id, **kwargs)
+        return DeletionResult(
+            resource_id=skill_id,
+            deleted=bool(getattr(response, "deleted", True)),
+            raw_response=response,
+        )
+
+    async def create_skill_version(
+        self,
+        skill_id: str,
+        *,
+        files: Any | None = None,
+        default: bool | None = None,
+        **kwargs: Any,
+    ) -> SkillVersionResource:
+        params = dict(kwargs)
+        if files is not None:
+            params["files"] = files
+        if default is not None:
+            params["default"] = default
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.versions.create(skill_id, **params)
+        return self._skill_version_resource_from_response(response, skill_id=skill_id)
+
+    async def retrieve_skill_version(
+        self,
+        skill_id: str,
+        version: str,
+        **kwargs: Any,
+    ) -> SkillVersionResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.versions.retrieve(
+                version,
+                skill_id=skill_id,
+                **kwargs,
+            )
+        return self._skill_version_resource_from_response(response, skill_id=skill_id)
+
+    async def list_skill_versions(
+        self,
+        skill_id: str,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> SkillVersionsPage:
+        params = dict(kwargs)
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        if order is not None:
+            params["order"] = order
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.versions.list(skill_id, **params)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        return self._skill_versions_page_from_response(response, skill_id=skill_id)
+
+    async def delete_skill_version(
+        self,
+        skill_id: str,
+        version: str,
+        **kwargs: Any,
+    ) -> DeletionResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.skills.versions.delete(
+                version,
+                skill_id=skill_id,
+                **kwargs,
+            )
+        return DeletionResult(
+            resource_id=version,
+            deleted=bool(getattr(response, "deleted", True)),
+            raw_response=response,
+        )
+
+    async def create_video(self, *, prompt: str, **kwargs: Any) -> VideoResource:
+        async with self.limiter.limit(tokens=self.count_tokens(prompt), requests=1):
+            response = await self.client.videos.create(prompt=prompt, **kwargs)
+        return self._video_resource_from_response(response)
+
+    async def create_video_and_poll(
+        self,
+        *,
+        prompt: str,
+        poll_interval_ms: int | None = None,
+        **kwargs: Any,
+    ) -> VideoResource:
+        params = dict(kwargs)
+        if poll_interval_ms is not None:
+            params["poll_interval_ms"] = poll_interval_ms
+        async with self.limiter.limit(tokens=self.count_tokens(prompt), requests=1):
+            response = await self.client.videos.create_and_poll(prompt=prompt, **params)
+        return self._video_resource_from_response(response)
+
+    async def retrieve_video(self, video_id: str, **kwargs: Any) -> VideoResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.retrieve(video_id, **kwargs)
+        return self._video_resource_from_response(response)
+
+    async def poll_video(
+        self,
+        video_id: str,
+        *,
+        poll_interval_ms: int | None = None,
+    ) -> VideoResource:
+        params: dict[str, Any] = {}
+        if poll_interval_ms is not None:
+            params["poll_interval_ms"] = poll_interval_ms
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.poll(video_id, **params)
+        return self._video_resource_from_response(response)
+
+    async def list_videos(
+        self,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> VideosPage:
+        params = dict(kwargs)
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        if order is not None:
+            params["order"] = order
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.list(**params)
+        if hasattr(response, "_get_page"):
+            response = await response._get_page()
+        return self._videos_page_from_response(response)
+
+    async def delete_video(self, video_id: str, **kwargs: Any) -> DeletionResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.delete(video_id, **kwargs)
+        return DeletionResult(
+            resource_id=video_id,
+            deleted=bool(getattr(response, "deleted", True)),
+            raw_response=response,
+        )
+
+    async def download_video(
+        self,
+        video_id: str,
+        *,
+        variant: str = "video",
+        **kwargs: Any,
+    ) -> VideoContentResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.download_content(
+                video_id,
+                variant=variant,
+                **kwargs,
+            )
+        content = bytes(getattr(response, "content", b"") or b"")
+        if not content and hasattr(response, "aread"):
+            content = await response.aread()
+        elif not content and hasattr(response, "read"):
+            read_result = response.read()
+            content = await read_result if inspect.isawaitable(read_result) else bytes(read_result)
+        headers = getattr(response, "headers", None)
+        media_type = headers.get("content-type") if headers is not None else None
+        return VideoContentResult(
+            video_id=video_id,
+            content=content,
+            variant=variant,
+            media_type=str(media_type or "") or None,
+            raw_response=response,
+        )
+
+    async def edit_video(self, *, video: Any, prompt: str, **kwargs: Any) -> VideoResource:
+        async with self.limiter.limit(tokens=self.count_tokens(prompt), requests=1):
+            response = await self.client.videos.edit(video=video, prompt=prompt, **kwargs)
+        return self._video_resource_from_response(response)
+
+    async def extend_video(
+        self,
+        *,
+        video: Any,
+        prompt: str,
+        seconds: str,
+        **kwargs: Any,
+    ) -> VideoResource:
+        async with self.limiter.limit(tokens=self.count_tokens(prompt), requests=1):
+            response = await self.client.videos.extend(
+                video=video,
+                prompt=prompt,
+                seconds=seconds,
+                **kwargs,
+            )
+        return self._video_resource_from_response(response)
+
+    async def remix_video(
+        self,
+        video_id: str,
+        *,
+        prompt: str,
+        **kwargs: Any,
+    ) -> VideoResource:
+        """Use the SDK's deprecated remix endpoint; prefer :meth:`edit_video`."""
+        async with self.limiter.limit(tokens=self.count_tokens(prompt), requests=1):
+            response = await self.client.videos.remix(video_id, prompt=prompt, **kwargs)
+        return self._video_resource_from_response(response)
+
+    async def create_video_character(
+        self,
+        *,
+        name: str,
+        video: Any,
+        **kwargs: Any,
+    ) -> VideoCharacterResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.create_character(
+                name=name,
+                video=video,
+                **kwargs,
+            )
+        return self._video_character_resource_from_response(response)
+
+    async def retrieve_video_character(
+        self,
+        character_id: str,
+        **kwargs: Any,
+    ) -> VideoCharacterResource:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.videos.get_character(character_id, **kwargs)
+        return self._video_character_resource_from_response(response)
+
     async def moderate(
         self,
         inputs: str | list[str] | list[dict[str, Any]],
@@ -3286,6 +4060,57 @@ class OpenAIProvider(BaseProvider):
             except openai.APIStatusError as e:
                 failure = self._failure(error=e, operation="edit_image")
                 return ImageGenerationResult(images=[], model=str(params.get("model") or self.model_name), status=failure.status, error=failure.message, raw_response={"normalized_failure": failure.to_dict()})
+
+    async def create_image_variation(
+        self,
+        image: Any,
+        **kwargs: Any,
+    ) -> ImageGenerationResult:
+        params: dict[str, Any] = {"image": image}
+        if "model" not in kwargs:
+            params["model"] = self.model_name
+        params.update(kwargs)
+
+        async with self.limiter.limit(tokens=0, requests=1):
+            try:
+                response = await self.client.images.create_variation(**params)
+                return self._image_generation_result_from_response(
+                    response,
+                    model_name=str(params.get("model") or self.model_name),
+                )
+            except openai.APIConnectionError as e:
+                failure = normalize_provider_failure(
+                    status=503,
+                    message=str(e.__cause__ or e),
+                    provider="openai",
+                    model=str(params.get("model") or self.model_name),
+                    operation="create_image_variation",
+                )
+                return ImageGenerationResult(
+                    images=[],
+                    model=str(params.get("model") or self.model_name),
+                    status=503,
+                    error=failure.message,
+                    raw_response={"normalized_failure": failure.to_dict()},
+                )
+            except openai.RateLimitError as e:
+                failure = self._failure(error=e, operation="create_image_variation")
+                return ImageGenerationResult(
+                    images=[],
+                    model=str(params.get("model") or self.model_name),
+                    status=failure.status,
+                    error=failure.message,
+                    raw_response={"normalized_failure": failure.to_dict()},
+                )
+            except openai.APIStatusError as e:
+                failure = self._failure(error=e, operation="create_image_variation")
+                return ImageGenerationResult(
+                    images=[],
+                    model=str(params.get("model") or self.model_name),
+                    status=failure.status,
+                    error=failure.message,
+                    raw_response={"normalized_failure": failure.to_dict()},
+                )
 
     async def transcribe_audio(
         self,
@@ -3653,6 +4478,16 @@ class OpenAIProvider(BaseProvider):
     async def cancel_fine_tuning_job(self, job_id: str, **kwargs: Any) -> FineTuningJobResult:
         async with self.limiter.limit(tokens=0, requests=1):
             response = await self.client.fine_tuning.jobs.cancel(job_id, **kwargs)
+        return self._fine_tuning_job_result_from_response(response)
+
+    async def pause_fine_tuning_job(self, job_id: str, **kwargs: Any) -> FineTuningJobResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.fine_tuning.jobs.pause(job_id, **kwargs)
+        return self._fine_tuning_job_result_from_response(response)
+
+    async def resume_fine_tuning_job(self, job_id: str, **kwargs: Any) -> FineTuningJobResult:
+        async with self.limiter.limit(tokens=0, requests=1):
+            response = await self.client.fine_tuning.jobs.resume(job_id, **kwargs)
         return self._fine_tuning_job_result_from_response(response)
 
     async def list_fine_tuning_jobs(self, **kwargs: Any) -> FineTuningJobsPage:
