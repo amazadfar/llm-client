@@ -64,6 +64,14 @@ from __future__ import annotations
 import importlib
 import warnings
 
+try:  # Single source of truth is the installed distribution metadata (pyproject).
+    from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+    from importlib.metadata import version as _dist_version
+
+    __version__ = _dist_version("llm-client")
+except Exception:  # pragma: no cover - fallback when metadata is unavailable
+    __version__ = "0.4.0"
+
 # === Agent Layer ===
 from .agent import (
     Agent,
@@ -365,6 +373,7 @@ from .tools import (
 )
 
 _STABLE_EXPORTS = [
+    "__version__",
     # Providers
     "Provider",
     "BaseProvider",
