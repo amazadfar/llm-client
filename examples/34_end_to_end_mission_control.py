@@ -1199,6 +1199,8 @@ async def main() -> None:
             RequestSpec(
                 provider=chat_handle.name,
                 model=chat_handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
                 messages=[
                     Message.system(
                         "You are a mission-control intake assistant. Respond in 4 markdown bullets labeled Situation, Risk, Constraint, Next."
@@ -1295,6 +1297,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=768,
         )
         classification_data = _normalize_classification(classification.data if classification.valid else {})
         _debug("classification complete")
@@ -1461,6 +1464,8 @@ async def main() -> None:
         digest_spec = RequestSpec(
             provider=chat_handle.name,
             model=chat_handle.model,
+            max_tokens=512,
+            reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
             messages=[
                 Message.system("Summarize the investigation in 4 concise bullets with stable wording."),
                 Message.user(
@@ -1487,6 +1492,8 @@ async def main() -> None:
         idem_spec = RequestSpec(
             provider=chat_handle.name,
             model=chat_handle.model,
+            max_tokens=512,
+            reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
             messages=[
                 Message.system("Return one sentence with the current operator approval posture."),
                 Message.user(
@@ -1578,10 +1585,14 @@ async def main() -> None:
             ),
         )
         lead_result = await lead_agent.run(
-            "Prepare the first command-post checkpoint with sections Confirmed Signal, Degraded Evidence, Unknowns, Operator Priorities, and Release Scope."
+            "Prepare the first command-post checkpoint with sections Confirmed Signal, Degraded Evidence, Unknowns, Operator Priorities, and Release Scope.",
+            max_tokens=768,
+            reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
         )
         lead_followup = await lead_agent.run(
-            "Now produce a tighter follow-up focused on what customer-safe messaging can say right now and what must wait for verification."
+            "Now produce a tighter follow-up focused on what customer-safe messaging can say right now and what must wait for verification.",
+            max_tokens=768,
+            reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
         )
         lead_raw_token_count = lead_agent.conversation.count_tokens(chat_handle.provider.model)
         lead_dispatched_messages = lead_agent.conversation.get_messages(model=chat_handle.provider.model)
@@ -1598,6 +1609,8 @@ async def main() -> None:
             RequestSpec(
                 provider=chat_handle.name,
                 model=chat_handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
                 messages=[
                     Message.system("You are the incident analyst. Respond in 3 bullets labeled Risk, Evidence, Next Action."),
                     Message.user(
@@ -1609,6 +1622,8 @@ async def main() -> None:
             RequestSpec(
                 provider=chat_handle.name,
                 model=chat_handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
                 messages=[
                     Message.system(
                         "You draft customer-safe updates. Respond in 3 bullets labeled Summary, Impact, Redaction Note. "
@@ -1624,6 +1639,8 @@ async def main() -> None:
             RequestSpec(
                 provider=chat_handle.name,
                 model=chat_handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
                 messages=[
                     Message.system("You are the compliance reviewer. Respond in 3 bullets labeled Exposure, Guardrail, Audit."),
                     Message.user(
@@ -1635,6 +1652,8 @@ async def main() -> None:
             RequestSpec(
                 provider=chat_handle.name,
                 model=chat_handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
                 messages=[
                     Message.system("You are the release risk analyst. Respond in 3 bullets labeled Release Status, Finance Risk, Recommendation."),
                     Message.user(
@@ -1650,8 +1669,8 @@ async def main() -> None:
             "compliance_reviewer",
             "release_risk_analyst",
         ]
-        specialist_results = await chat_engine.batch_complete(specialist_specs, max_concurrency=4)
-        _debug("specialist batch complete")
+        specialist_results = await chat_engine.concurrent_complete(specialist_specs, max_concurrency=4)
+        _debug("specialist local concurrency complete")
         specialist_batch = [
             {
                 "role": role,
@@ -1723,6 +1742,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=768,
         )
         judge_data = judge_packet.data if judge_packet.valid else None
         eval_gate = _judge_deterministic_summary(
@@ -1750,6 +1770,8 @@ async def main() -> None:
         memo_spec = RequestSpec(
             provider="auto",
             model="",
+            max_tokens=768,
+            reasoning_effort="minimal" if chat_handle.name == "openai" else "low",
             messages=[
                 Message.system(
                     "You are the mission-control final presenter. Return markdown with headings: Situation, Decision, Evidence, Approval, Next Actions."
@@ -1858,6 +1880,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=3072,
         )
         _debug("structured packet complete")
         structured_data = dict(structured_packet.data or {})

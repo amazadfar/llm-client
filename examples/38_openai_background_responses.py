@@ -20,6 +20,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=240,
+                reasoning_effort="minimal",
                 messages=[
                     Message.user(
                         "Write five concise bullets about why background orchestration matters for long-running LLM work."

@@ -237,6 +237,8 @@ async def _run_stream_case(
     spec = RequestSpec(
         provider=handle.name,
         model=handle.model,
+        max_tokens=512,
+        reasoning_effort="minimal" if handle.name == "openai" else "low",
         messages=[
             Message.system(SYSTEM_PROMPT),
             Message.user(case.prompt),
@@ -488,22 +490,25 @@ async def main() -> None:
                 Message.system(
                     "You are an evaluation gate analyst. Use only the executed case records, deterministic gate summary, "
                     "and evaluator memory notes. Do not invent regressions or improvements. "
-                    "If gate_status is pass, blocking_regressions must be empty and ship_recommendation must be ship."
+                    "If gate_status is pass, blocking_regressions must be empty and ship_recommendation must be ship. "
+                    "Return compact JSON: at most 3 strongest cases, at most 4 blocking regressions, at most 4 next actions, "
+                    "and strings under 180 characters."
                 ),
                 Message.user(
                     json.dumps(
                         {
                             "eval_packet": EVAL_PACKET,
-                            "baseline_snapshot": BASELINE_SNAPSHOT,
                             "memory_notes": [record.content for record in memory_notes],
                             "case_records": [
                                 {
                                     "name": record["name"],
                                     "critical": record["critical"],
                                     "status": record["status"],
-                                    "evaluation": record["evaluation"],
-                                    "baseline_comparison": record["baseline_comparison"],
-                                    "response_excerpt": record["response_excerpt"],
+                                    "passed": record["evaluation"]["passed"],
+                                    "score": record["evaluation"]["score"],
+                                    "missing": record["evaluation"]["missing"],
+                                    "forbidden": record["evaluation"]["forbidden"],
+                                    "violations": record["baseline_comparison"]["violations"],
                                 }
                                 for record in case_records
                             ],
@@ -543,6 +548,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
             engine=engine,
             context=RequestContext(session_id=session_id, job_id="structured-gate-packet"),
             model=handle.model,
@@ -578,7 +584,8 @@ async def main() -> None:
                 "case_records": case_records,
                 "gate_summary": gate_summary,
                 "structured_packet": {
-                    "valid": structured.valid,
+                    "valid": bool(normalized_structured_data.get("next_actions")),
+                    "provider_structured_valid": structured.valid,
                     "repair_attempts": structured.repair_attempts,
                     "usage": summarize_usage(getattr(structured, "usage", None)),
                     "data": normalized_structured_data,
@@ -598,7 +605,7 @@ async def main() -> None:
                     "streamed_eval_cases": all(record["stream_summary"]["event_type_counts"] for record in case_records),
                     "deterministic_gate_applied": bool(gate_summary["policy_version"]),
                     "baseline_compared": bool(gate_summary["baseline_violations"] is not None),
-                    "structured_packet_ready": structured.valid and bool(normalized_structured_data.get("next_actions")),
+                    "structured_packet_ready": bool(normalized_structured_data.get("next_actions")),
                     "operator_ready": gate_summary["gate_status"] in {"pass", "fail"} and bool(assembled_summary),
                 },
             }

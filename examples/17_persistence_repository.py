@@ -32,6 +32,7 @@ def _run_prefix() -> str:
 
 
 async def _live_payloads(provider) -> tuple[dict, dict]:  # type: ignore[no-untyped-def]
+    reasoning_effort = "minimal" if provider.__class__.__name__ == "OpenAIProvider" else "low"
     triage = await provider.complete(
         [
             Message.system(
@@ -42,7 +43,9 @@ async def _live_payloads(provider) -> tuple[dict, dict]:  # type: ignore[no-unty
                 "Finance export jobs started timing out after retention-policy changes. "
                 "Finance cannot complete month-end reconciliation."
             ),
-        ]
+        ],
+        max_tokens=768,
+        reasoning_effort=reasoning_effort,
     )
     customer_update = await provider.complete(
         [
@@ -54,7 +57,9 @@ async def _live_payloads(provider) -> tuple[dict, dict]:  # type: ignore[no-unty
                 "Workspace export jobs are timing out after audit logging was enabled. "
                 "Finance and compliance teams are blocked on month-end reconciliation."
             ),
-        ]
+        ],
+        max_tokens=768,
+        reasoning_effort=reasoning_effort,
     )
     return (
         {

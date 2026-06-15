@@ -119,6 +119,8 @@ async def _run_job(
             RequestSpec(
                 provider=provider_name,
                 model=model_name,
+                max_tokens=512,
+                reasoning_effort="minimal" if provider_name == "openai" else "low",
                 messages=[
                     Message.system(
                         "Draft a concise support escalation brief with sections: Situation, Likely Owner, Immediate Action, Customer Update Guidance, Handoff Status."

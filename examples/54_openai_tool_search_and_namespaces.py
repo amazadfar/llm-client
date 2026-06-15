@@ -32,7 +32,7 @@ async def billing_quote_refund(invoice_id: str) -> dict[str, str]:
 
 
 async def main() -> None:
-    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-nano") or "gpt-5-nano"
+    model_name = example_env("LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL", "gpt-5-mini") or "gpt-5-mini"
     handle = build_provider_handle("openai", model_name, use_responses_api=True)
     if handle.name != "openai":
         fail_or_skip("Set LLM_CLIENT_EXAMPLE_PROVIDER=openai to run the OpenAI tool-search example.")
@@ -44,8 +44,8 @@ async def main() -> None:
                 provider.complete(
                     "Search the billing tools and pick the refund-related one.",
                     model=handle.model,
-                    max_tokens=32,
-                    reasoning_effort="low",
+                    max_tokens=512,
+                    reasoning_effort="minimal",
                     tools=[
                         ResponsesToolSearch.hosted(),
                         ResponsesToolNamespace(
@@ -106,6 +106,11 @@ async def main() -> None:
                 ),
             }
         )
+        if not initial.content and not initial.output_items:
+            fail_or_skip(
+                "The selected model returned no tool-search output. "
+                "Set LLM_CLIENT_EXAMPLE_OPENAI_TOOLS_MODEL to a compatible Responses model."
+            )
     finally:
         await close_provider(handle.provider)
 

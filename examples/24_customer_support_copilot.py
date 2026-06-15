@@ -230,6 +230,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
         )
 
         assembled_summary = _assembled_summary(structured.data or {})

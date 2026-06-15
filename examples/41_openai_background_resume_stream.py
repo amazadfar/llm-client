@@ -53,6 +53,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=240,
+                reasoning_effort="minimal",
                 messages=[
                     Message.user(
                         "Write four concise bullets on how background response resumption helps systems recover after reconnects."

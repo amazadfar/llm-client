@@ -63,6 +63,8 @@ async def main() -> None:
             request = ContentRequestEnvelope(
                 provider="openai",
                 model=handle.model,
+                max_tokens=512,
+                reasoning_effort="minimal",
                 messages=(
                     ContentMessage(
                         role=Role.USER,
@@ -90,6 +92,8 @@ async def main() -> None:
             request = ContentRequestEnvelope(
                 provider=handle.name,
                 model=handle.model,
+                max_tokens=320,
+                reasoning_effort="minimal" if handle.name == "openai" else "low",
                 messages=(ContentMessage(role=Role.USER, blocks=fallback_blocks),),
             )
 

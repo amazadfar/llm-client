@@ -364,7 +364,13 @@ async def main() -> None:
         diagnostics = EngineDiagnosticsRecorder()
         hooks = HookManager([lifecycle, diagnostics])
 
-        spec = RequestSpec(provider=handle.name, model=handle.model, messages=SHARED_MESSAGES)
+        spec = RequestSpec(
+            provider=handle.name,
+            model=handle.model,
+            max_tokens=512,
+            reasoning_effort="minimal" if handle.name == "openai" else "low",
+            messages=SHARED_MESSAGES,
+        )
 
         no_cache_engine = ExecutionEngine(provider=handle.provider, hooks=hooks)
 
@@ -517,6 +523,8 @@ async def main() -> None:
         memo_spec = RequestSpec(
             provider=handle.name,
             model=handle.model,
+            max_tokens=768,
+            reasoning_effort="minimal" if handle.name == "openai" else "low",
             messages=[
                 Message.system(
                     "Write a cache strategy recommendation memo with sections: Baseline, Repeat Winners, Recommended Stack, Cautions. "
@@ -596,6 +604,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
             engine=no_cache_engine,
             context=RequestContext(session_id=session_id, job_id="structured-cache-showdown"),
             model=handle.model,

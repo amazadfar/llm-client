@@ -373,6 +373,8 @@ async def main() -> None:
         request_envelope = ContentRequestEnvelope(
             provider=handle.name,
             model=handle.model,
+            max_tokens=768,
+            reasoning_effort="minimal" if handle.name == "openai" else "low",
             stream=True,
             messages=(
                 ContentMessage(
@@ -478,6 +480,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=3072,
         )
 
         normalized_structured_data = _normalize_structured_packet(structured.data)

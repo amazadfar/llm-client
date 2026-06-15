@@ -301,7 +301,12 @@ def _build_tools(memory: ShortTermMemoryStore) -> list[Tool]:
     ]
 
 
-async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) -> tuple[Any, dict[str, Any]]:
+async def _run_agent_stream(
+    agent: Agent,
+    prompt: str,
+    context: RequestContext,
+    provider_name: str,
+) -> tuple[Any, dict[str, Any]]:
     event_counts: Counter[str] = Counter()
     token_preview_parts: list[str] = []
     tool_call_events: list[dict[str, Any]] = []
@@ -310,7 +315,12 @@ async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) 
     usage_events: list[dict[str, Any]] = []
     final_result: Any = None
 
-    async for event in agent.stream(prompt, context=context):
+    async for event in agent.stream(
+        prompt,
+        context=context,
+        max_tokens=768,
+        reasoning_effort="minimal" if provider_name == "openai" else "low",
+    ):
         event_counts[event.type.value] += 1
 
         if event.type == StreamEventType.TOKEN:
@@ -461,7 +471,7 @@ async def main() -> None:
             job_id="release-readiness",
             tags={"release_id": RELEASE_PACKET["release_id"], "release_train": RELEASE_PACKET["release_train"]},
         )
-        result, stream_summary = await _run_agent_stream(agent, prompt, request_context)
+        result, stream_summary = await _run_agent_stream(agent, prompt, request_context, handle.name)
 
         structured = await extract_structured(
             handle.provider,
@@ -530,6 +540,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=3072,
         )
         normalized_structured_data = _normalize_structured_packet(structured.data)
 

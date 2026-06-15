@@ -41,7 +41,13 @@ async def main() -> None:
                 event_id="evt_text_turn",
             )
             await connection.create_response({"modalities": ["text"]}, event_id="evt_response")
-            output = await connection.collect_response_output(timeout=8.0)
+            try:
+                output = await connection.collect_response_output(timeout=12.0)
+            except TimeoutError:
+                fail_or_skip(
+                    "Timed out while collecting realtime response output. "
+                    "The session was closed without treating a provider/network timeout as a package regression."
+                )
 
             print_heading("OpenAI Realtime Output Collection")
             print_json(

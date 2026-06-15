@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import asyncio
 
-from cookbook_support import build_live_provider, close_provider, fail_or_skip, print_heading, print_json, summarize_usage
+from cookbook_support import (
+    build_live_provider,
+    close_provider,
+    fail_or_skip,
+    print_heading,
+    print_json,
+    summarize_opaque_values,
+    summarize_usage,
+)
 
 from llm_client.engine import ExecutionEngine
 from llm_client.providers.types import Message
@@ -26,6 +34,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=260,
+                reasoning_effort="minimal",
                 messages=[
                     Message.user(
                         "Using the current conversation, draft a launch-readiness memo with three bullets and one explicit blocker."
@@ -55,6 +65,8 @@ async def main() -> None:
             RequestSpec(
                 provider="openai",
                 model=handle.model,
+                max_tokens=120,
+                reasoning_effort="minimal",
                 messages=[Message.user("Using the conversation context, return one sentence naming the blocker owner and next checkpoint.")],
                 extra={"conversation": conversation.conversation_id},
             )
@@ -95,7 +107,7 @@ async def main() -> None:
                 "background_usage": summarize_usage(final_state.completion.usage if final_state.completion else None),
                 "followup_content": followup.content,
                 "conversation_item_count": len(items_page.items),
-                "compaction": compaction.to_dict(),
+                "compaction": summarize_opaque_values(compaction.to_dict()),
                 "deleted_response": deleted_response.to_dict(),
                 "deleted_conversation": deleted_conversation.to_dict(),
             }

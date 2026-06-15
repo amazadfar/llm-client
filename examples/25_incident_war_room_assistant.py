@@ -290,7 +290,12 @@ def _serialize_turns(turns: list[Any]) -> list[dict[str, Any]]:
     ]
 
 
-async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) -> tuple[Any, dict[str, Any]]:
+async def _run_agent_stream(
+    agent: Agent,
+    prompt: str,
+    context: RequestContext,
+    provider_name: str,
+) -> tuple[Any, dict[str, Any]]:
     event_counts: Counter[str] = Counter()
     token_preview_parts: list[str] = []
     tool_call_events: list[dict[str, Any]] = []
@@ -299,7 +304,12 @@ async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) 
     usage_events: list[dict[str, Any]] = []
     final_result: Any = None
 
-    async for event in agent.stream(prompt, context=context):
+    async for event in agent.stream(
+        prompt,
+        context=context,
+        max_tokens=768,
+        reasoning_effort="minimal" if provider_name == "openai" else "low",
+    ):
         event_counts[event.type.value] += 1
 
         if event.type == StreamEventType.TOKEN:
@@ -403,7 +413,7 @@ async def main() -> None:
             job_id="war-room-brief",
             tags={"incident_id": INCIDENT_PACKET["incident_id"], "service": SERVICE_NAME},
         )
-        result, stream_summary = await _run_agent_stream(agent, prompt, request_context)
+        result, stream_summary = await _run_agent_stream(agent, prompt, request_context, handle.name)
 
         structured = await extract_structured(
             handle.provider,
@@ -453,6 +463,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
         )
 
         await memory.write(

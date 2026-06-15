@@ -149,6 +149,8 @@ async def _answer(engine: ExecutionEngine, provider_name: str, model_name: str, 
         RequestSpec(
             provider=provider_name,
             model=model_name,
+            max_tokens=768,
+            reasoning_effort="minimal" if provider_name == "openai" else "low",
             messages=[
                 Message.system("You produce executive-ready incident guidance with explicit evidence boundaries."),
                 Message.user(prompt),

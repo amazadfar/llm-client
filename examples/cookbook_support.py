@@ -26,7 +26,7 @@ CHAT_MODEL_DEFAULTS = {
 
 SECONDARY_CHAT_MODEL_DEFAULTS = {
     "openai": "gpt-5-mini",
-    "anthropic": "claude-opus-4-7",
+    "anthropic": "claude-sonnet-4-6",
     "google": "gemini-2.5-flash",
 }
 
@@ -49,6 +49,20 @@ def print_heading(title: str) -> None:
 
 def print_json(value: Any) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False, default=str))
+
+
+def summarize_opaque_values(value: Any) -> Any:
+    if isinstance(value, dict):
+        summarized: dict[str, Any] = {}
+        for key, item in value.items():
+            if key == "encrypted_content" and isinstance(item, str):
+                summarized[key] = f"<encrypted:{len(item)} chars>"
+            else:
+                summarized[key] = summarize_opaque_values(item)
+        return summarized
+    if isinstance(value, (list, tuple)):
+        return [summarize_opaque_values(item) for item in value]
+    return value
 
 
 def require_optional_module(module_name: str, install_hint: str) -> bool:
@@ -194,7 +208,15 @@ def summarize_usage(usage: Any) -> dict[str, Any]:
         "input_tokens": getattr(usage, "input_tokens", None),
         "output_tokens": getattr(usage, "output_tokens", None),
         "total_tokens": getattr(usage, "total_tokens", None),
+        "input_tokens_cached": getattr(usage, "input_tokens_cached", None),
+        "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", None),
+        "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", None),
+        "output_tokens_reasoning": getattr(usage, "output_tokens_reasoning", None),
         "total_cost": getattr(usage, "total_cost", None),
+        "cost_status": getattr(usage, "cost_status", None),
+        "execution_mode": getattr(usage, "execution_mode", None),
+        "requested_service_tier": getattr(usage, "requested_service_tier", None),
+        "actual_service_tier": getattr(usage, "actual_service_tier", None),
     }
 
 
@@ -211,5 +233,6 @@ __all__ = [
     "require_optional_module",
     "resolve_model_name",
     "resolve_provider_name",
+    "summarize_opaque_values",
     "summarize_usage",
 ]

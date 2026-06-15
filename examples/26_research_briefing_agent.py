@@ -433,7 +433,12 @@ def _assembled_briefing(data: dict[str, Any] | None) -> str | None:
     )
 
 
-async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) -> tuple[Any, dict[str, Any]]:
+async def _run_agent_stream(
+    agent: Agent,
+    prompt: str,
+    context: RequestContext,
+    provider_name: str,
+) -> tuple[Any, dict[str, Any]]:
     event_counts: Counter[str] = Counter()
     token_preview_parts: list[str] = []
     tool_call_events: list[dict[str, Any]] = []
@@ -442,7 +447,12 @@ async def _run_agent_stream(agent: Agent, prompt: str, context: RequestContext) 
     usage_events: list[dict[str, Any]] = []
     final_result: Any = None
 
-    async for event in agent.stream(prompt, context=context):
+    async for event in agent.stream(
+        prompt,
+        context=context,
+        max_tokens=768,
+        reasoning_effort="minimal" if provider_name == "openai" else "low",
+    ):
         event_counts[event.type.value] += 1
 
         if event.type == StreamEventType.TOKEN:
@@ -599,7 +609,7 @@ async def main() -> None:
             "not a moonshot autonomy story. Build an operator-ready and reviewer-aware briefing. "
             "Stay inside the facts in the briefing packet, memory, and retrieved evidence; treat missing details as open questions instead of filling them in."
         )
-        result, stream_summary = await _run_agent_stream(agent, prompt, request_context)
+        result, stream_summary = await _run_agent_stream(agent, prompt, request_context, chat_handle.name)
 
         evidence_ledger = _collect_evidence_ledger(result.turns)
         structured = await extract_structured(
@@ -661,6 +671,7 @@ async def main() -> None:
                 },
                 max_repair_attempts=1,
             ),
+            max_tokens=2048,
         )
 
         citation_audit = _citation_audit([item["citation"] for item in evidence_ledger], structured.data)

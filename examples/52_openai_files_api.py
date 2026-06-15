@@ -28,6 +28,8 @@ async def main() -> None:
     purpose = example_env("LLM_CLIENT_EXAMPLE_FILE_PURPOSE", "assistants") or "assistants"
     keep_uploaded_file = example_env("LLM_CLIENT_EXAMPLE_KEEP_UPLOADED_FILE", "0") == "1"
     handle = build_provider_handle("openai", model_name)
+    created = None
+    deletion = None
 
     try:
         engine = ExecutionEngine(provider=handle.provider)
@@ -63,7 +65,6 @@ async def main() -> None:
                 f"OpenAI does not allow file content download for purpose={purpose!r}."
             )
 
-        deletion = None
         if not keep_uploaded_file:
             deletion = await engine.delete_file(
                 created.file_id,
@@ -97,6 +98,15 @@ async def main() -> None:
             }
         )
     finally:
+        if created is not None and not keep_uploaded_file and deletion is None:
+            try:
+                await engine.delete_file(
+                    created.file_id,
+                    provider_name="openai",
+                    model=handle.model,
+                )
+            except Exception as exc:
+                print(f"warning: failed to clean up OpenAI file {created.file_id}: {exc}")
         await close_provider(handle.provider)
 
 
