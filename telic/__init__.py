@@ -338,7 +338,13 @@ from .redaction import (
     sanitize_tool_output,
 )
 from .batch_api import BatchJob, BatchRequestItem, BatchResultItem
-from .pricing import ResolvedCost, compute_model_cost, resolve_cost
+from .pricing import (
+    ResolvedCost,
+    ResolvedDecimalCost,
+    compute_model_cost,
+    resolve_cost,
+    resolve_cost_decimal,
+)
 from .request_options import AnthropicRequestOptions, OpenAIRequestOptions
 from .resources import FileObject, ModelInfo, ProviderResourceAvailability, ResourcePage
 from .spec import RequestContext, RequestSpec
@@ -419,7 +425,9 @@ _STABLE_EXPORTS = [
     "OpenAIRequestOptions",
     "AnthropicRequestOptions",
     "ResolvedCost",
+    "ResolvedDecimalCost",
     "resolve_cost",
+    "resolve_cost_decimal",
     "compute_model_cost",
     "BatchJob",
     "BatchRequestItem",

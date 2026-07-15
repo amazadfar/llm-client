@@ -56,6 +56,38 @@ class ResolvedCost:
         }
 
 
+@dataclass(frozen=True)
+class ResolvedDecimalCost:
+    """Exact monetary result for persistence and reconciliation."""
+
+    input_cost: Decimal | None = None
+    output_cost: Decimal | None = None
+    cache_read_cost: Decimal | None = None
+    cache_write_cost: Decimal | None = None
+    other_costs: tuple[tuple[str, Decimal], ...] = ()
+    total_cost: Decimal | None = None
+    cost_status: str = "unknown"
+    missing: tuple[str, ...] = ()
+    currency: str = "USD"
+    effective_date: str | None = None
+    pricing_source: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "input_cost": self.input_cost,
+            "output_cost": self.output_cost,
+            "cache_read_cost": self.cache_read_cost,
+            "cache_write_cost": self.cache_write_cost,
+            "other_costs": dict(self.other_costs),
+            "total_cost": self.total_cost,
+            "cost_status": self.cost_status,
+            "missing": list(self.missing),
+            "currency": self.currency,
+            "effective_date": self.effective_date,
+            "pricing_source": dict(self.pricing_source) if self.pricing_source else None,
+        }
+
+
 def _dimension_matches(
     dim: PricingDimension,
     *,
@@ -157,6 +189,186 @@ def _rate_for(
     return per_token, True
 
 
+def _decimal_cost_for(
+    pricing: Pricing,
+    *,
+    metrics: tuple[str, ...],
+    mode: str,
+    tier: str | None,
+    speed: str | None,
+    region: str | None,
+    quantity: Decimal,
+    threshold_tokens: int,
+) -> tuple[Decimal | None, bool]:
+    dimension = None
+    for metric in metrics:
+        dimension = _select_dimension(
+            pricing,
+            metric=metric,
+            mode=mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            tokens=threshold_tokens,
+        )
+        if dimension is not None:
+            break
+    if dimension is None:
+        return None, False
+    if dimension.rate is None:
+        return None, True
+    rate = Decimal(str(dimension.rate))
+    if dimension.unit == "million_tokens":
+        return quantity * rate / _MILLION, True
+    return quantity * rate, True
+
+
+def resolve_cost_decimal(
+    pricing: Pricing | None,
+    *,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    cache_read_tokens: int = 0,
+    cache_creation_tokens: int = 0,
+    cache_ttl: str = "5m",
+    mode: str = "standard",
+    tier: str | None = None,
+    speed: str | None = None,
+    region: str | None = None,
+    regional_uplift: Decimal | str | float | None = None,
+    other_billed_units: dict[str, Decimal | int] | None = None,
+) -> ResolvedDecimalCost:
+    """Resolve catalog pricing without crossing a binary floating-point boundary."""
+
+    billed_units = dict(other_billed_units or {})
+    if pricing is None or not pricing.dimensions:
+        missing = ["input", "output"]
+        if cache_read_tokens:
+            missing.append("cached_input")
+        if cache_creation_tokens:
+            missing.append("cache_write_1h" if cache_ttl == "1h" else "cache_write_5m")
+        missing.extend(metric for metric, quantity in billed_units.items() if quantity)
+        return ResolvedDecimalCost(cost_status="unknown", missing=tuple(missing))
+
+    dim_mode = _MODE_TO_DIMENSION_MODE.get(mode, "standard")
+    uncached_input = max(0, input_tokens - cache_read_tokens)
+    missing: list[str] = []
+
+    input_cost, _ = _decimal_cost_for(
+        pricing,
+        metrics=("input",),
+        mode=dim_mode,
+        tier=tier,
+        speed=speed,
+        region=region,
+        quantity=Decimal(uncached_input),
+        threshold_tokens=input_tokens,
+    )
+    output_cost, _ = _decimal_cost_for(
+        pricing,
+        metrics=("output",),
+        mode=dim_mode,
+        tier=tier,
+        speed=speed,
+        region=region,
+        quantity=Decimal(max(0, output_tokens)),
+        threshold_tokens=output_tokens,
+    )
+    if input_cost is None:
+        missing.append("input")
+    if output_cost is None:
+        missing.append("output")
+
+    cache_read_cost: Decimal | None = Decimal("0")
+    if cache_read_tokens:
+        cache_read_cost, _ = _decimal_cost_for(
+            pricing,
+            metrics=("cache_read", "cached_input"),
+            mode=dim_mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            quantity=Decimal(max(0, cache_read_tokens)),
+            threshold_tokens=cache_read_tokens,
+        )
+        if cache_read_cost is None:
+            missing.append("cached_input")
+
+    cache_write_cost: Decimal | None = Decimal("0")
+    if cache_creation_tokens:
+        cache_metric = "cache_write_1h" if cache_ttl == "1h" else "cache_write_5m"
+        cache_write_cost, _ = _decimal_cost_for(
+            pricing,
+            metrics=(cache_metric,),
+            mode=dim_mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            quantity=Decimal(max(0, cache_creation_tokens)),
+            threshold_tokens=cache_creation_tokens,
+        )
+        if cache_write_cost is None:
+            missing.append(cache_metric)
+
+    other_costs: list[tuple[str, Decimal]] = []
+    for metric, raw_quantity in sorted(billed_units.items()):
+        quantity = Decimal(str(raw_quantity))
+        if not quantity.is_finite() or quantity < 0:
+            raise ValueError("other billed units must be finite and non-negative")
+        if not quantity:
+            other_costs.append((metric, Decimal("0")))
+            continue
+        cost, _ = _decimal_cost_for(
+            pricing,
+            metrics=(metric,),
+            mode=dim_mode,
+            tier=tier,
+            speed=speed,
+            region=region,
+            quantity=quantity,
+            threshold_tokens=int(quantity),
+        )
+        if cost is None:
+            missing.append(metric)
+        else:
+            other_costs.append((metric, cost))
+
+    parts = [input_cost, output_cost, cache_read_cost, cache_write_cost]
+    parts.extend(cost for _, cost in other_costs)
+    total: Decimal | None
+    if any(part is None for part in parts) or missing:
+        total = None
+    else:
+        total = sum((part for part in parts if part is not None), Decimal("0"))
+        if regional_uplift is not None:
+            uplift = Decimal(str(regional_uplift))
+            if not uplift.is_finite() or uplift < 0:
+                raise ValueError("regional uplift must be finite and non-negative")
+            total *= uplift
+
+    any_known = any(part is not None for part in parts)
+    if not missing:
+        status = "complete"
+    elif any_known:
+        status = "partial"
+    else:
+        status = "unknown"
+
+    return ResolvedDecimalCost(
+        input_cost=input_cost,
+        output_cost=output_cost,
+        cache_read_cost=cache_read_cost,
+        cache_write_cost=cache_write_cost,
+        other_costs=tuple(other_costs),
+        total_cost=total,
+        cost_status=status,
+        missing=tuple(missing),
+        currency=pricing.currency,
+        effective_date=pricing.effective_date,
+        pricing_source=dict(pricing.source) if pricing.source else None,
+    )
+
+
 def resolve_cost(
     pricing: Pricing | None,
     *,
@@ -213,7 +425,7 @@ def resolve_cost(
 
     cache_read_cost: float | None = 0.0
     if cache_read_tokens:
-        cr_rate, _ = _rate_for(
+        cr_rate, dimension_present = _rate_for(
             pricing,
             metric="cache_read",
             mode=dim_mode,
@@ -222,6 +434,16 @@ def resolve_cost(
             region=region,
             tokens=cache_read_tokens,
         )
+        if not dimension_present:
+            cr_rate, _ = _rate_for(
+                pricing,
+                metric="cached_input",
+                mode=dim_mode,
+                tier=tier,
+                speed=speed,
+                region=region,
+                tokens=cache_read_tokens,
+            )
         if cr_rate is None:
             cache_read_cost = None
             missing.append("cache_read")
@@ -317,4 +539,10 @@ def compute_model_cost(
     )
 
 
-__all__ = ["ResolvedCost", "resolve_cost", "compute_model_cost"]
+__all__ = [
+    "ResolvedCost",
+    "ResolvedDecimalCost",
+    "resolve_cost",
+    "resolve_cost_decimal",
+    "compute_model_cost",
+]
